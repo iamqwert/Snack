@@ -1,0 +1,3992 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>贪吃蛇</title>
+  <style>
+    :root,
+    [data-theme="dark"] {
+      --bg: #0f1419;
+      --bg-grad: #1b2740;
+      --panel: #1a2332;
+      --ink: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #3ddc97;
+      --danger: #ff6b6b;
+      --border: #2c3a52;
+      --canvas-bg: #121a27;
+      --grid: #243044;
+      --overlay-bg: rgba(10, 14, 22, 0.72);
+      --kbd-bg: #1c2738;
+      --kbd-border: #3a4b66;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      --btn-ink: #062016;
+      --chip-bg: #1c2738;
+    }
+    [data-theme="light"] {
+      --bg: #eef2f7;
+      --bg-grad: #d9e4f2;
+      --panel: #ffffff;
+      --ink: #152033;
+      --muted: #5b6b82;
+      --accent: #0faf72;
+      --danger: #e25555;
+      --border: #d0d9e6;
+      --canvas-bg: #f7fafc;
+      --grid: #d7e0ec;
+      --overlay-bg: rgba(247, 250, 252, 0.82);
+      --kbd-bg: #e8eef6;
+      --kbd-border: #c5d0de;
+      --shadow: 0 16px 40px rgba(21, 32, 51, 0.12);
+      --btn-ink: #ffffff;
+      --chip-bg: #e8eef6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(1200px 800px at 50% 20%, var(--bg-grad) 0%, var(--bg) 60%);
+      color: var(--ink);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      padding: 24px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .wrap {
+      width: min(100%, 520px);
+      display: grid;
+      gap: 16px;
+    }
+    header {
+      display: none;
+    }
+    .board {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 0;
+      padding: 0 2px;
+    }
+    .hud .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-width: 0;
+    }
+    .hud .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      margin-bottom: 4px;
+    }
+    .hud .stat strong {
+      font-size: 1.15rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .header-center {
+      display: flex;
+      justify-content: center;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: right;
+      line-height: 1.35;
+      max-width: 100%;
+    }
+    .theme-switch {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 999px;
+      background: var(--chip-bg);
+      border: 1px solid var(--border);
+    }
+    .theme-switch button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.78rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .theme-switch button[aria-pressed="true"] {
+      background: var(--accent);
+      color: var(--btn-ink);
+      font-weight: 600;
+    }
+    .lang-switch {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 999px;
+      background: var(--chip-bg);
+      border: 1px solid var(--border);
+    }
+    .lang-switch button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.78rem;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .lang-switch button[aria-pressed="true"] {
+      background: var(--accent);
+      color: var(--btn-ink);
+      font-weight: 600;
+    }
+    .link-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.78rem;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .link-btn:hover { filter: brightness(1.05); }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(8, 12, 18, 0.55);
+      backdrop-filter: blur(4px);
+    }
+    .modal.hidden { display: none; }
+    .modal-card {
+      width: min(100%, 520px);
+      max-height: min(86vh, 720px);
+      overflow: auto;
+      background: var(--panel);
+      color: var(--ink);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 22px 22px 18px;
+    }
+    .modal-title {
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .modal-body {
+      color: var(--ink);
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+    .modal-body h3 {
+      font-size: 0.98rem;
+      margin: 14px 0 6px;
+      color: var(--accent);
+    }
+    .modal-body p, .modal-body li {
+      color: var(--muted);
+    }
+    .modal-body ul {
+      margin: 4px 0 0 1.1em;
+      padding: 0;
+    }
+    .modal-body li { margin: 4px 0; }
+    .modal-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 16px;
+    }
+    #startBtn.is-hidden { display: none; }
+    .board {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--canvas-bg);
+      image-rendering: auto;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: transparent;
+      backdrop-filter: none;
+      text-align: center;
+      padding: 24px;
+      gap: 12px;
+    }
+    .overlay.overlay-dim {
+      background: var(--overlay-bg);
+      backdrop-filter: blur(4px);
+    }
+    .overlay.hidden { display: none; }
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 2px;
+      min-height: 44px;
+      font: inherit;
+      font-size: 0.95rem;
+      color: var(--ink);
+    }
+    .volume-row .more-label {
+      flex: 0 0 auto;
+      min-width: 3.5em;
+      text-align: left;
+      font-weight: 400;
+    }
+    .volume-row input[type="range"] {
+      flex: 0 0 46%;
+      margin-left: auto;
+      max-width: 160px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .volume-row.is-off {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .start-title {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin: 0 0 14px;
+      color: var(--ink);
+    }
+    .overlay p { color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 22px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--btn-ink);
+      background: var(--accent);
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    .btn:active { transform: translateY(0); }
+    .btn.btn-ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--border);
+    }
+    .btn.btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: transparent;
+      filter: none;
+    }
+    #restartBtn:hover,
+    #homeBtn:hover {
+      border-color: var(--danger) !important;
+      color: var(--danger) !important;
+    }
+    .overlay-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
+      min-width: 200px;
+    }
+    .overlay-actions .btn { width: 100%; }
+    .lang-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 4px 0 8px;
+    }
+    .lang-picker button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--chip-bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .lang-picker button[aria-pressed="true"] {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .lang-modal-card {
+      width: min(100%, 320px);
+    }
+    .versus-hint {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .hidden { display: none !important; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.75rem;
+      margin-bottom: 4px;
+    }
+    .stat strong {
+      font-size: 1.25rem;
+      font-variant-numeric: tabular-nums;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      text-align: center;
+    }
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      width: 1.55em;
+      height: 1.55em;
+      min-width: 1.55em;
+      padding: 0;
+      border: 1px solid var(--kbd-border);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      background: var(--kbd-bg);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 0.8em;
+      line-height: 1;
+      vertical-align: middle;
+    }
+    kbd.kbd-wide {
+      width: auto;
+      min-width: 3.4em;
+      padding: 0 0.45em;
+      height: 1.55em;
+    }
+    .mute-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--ink);
+      width: 28px;
+      height: 28px;
+      border-radius: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .mute-btn:hover { opacity: 0.8; }
+    .mute-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .more-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      text-align: left;
+      appearance: none;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+      padding: 12px 2px;
+      border-radius: 0;
+      cursor: pointer;
+      box-shadow: none;
+      transform: none;
+      filter: none;
+      min-height: 44px;
+    }
+    .more-row:hover,
+    .more-row:focus,
+    .more-row:active {
+      filter: none;
+      transform: none;
+      background: transparent;
+      box-shadow: none;
+    }
+    .more-row:active {
+      transform: none;
+    }
+    .more-label {
+      flex: 0 0 auto;
+      min-width: 3.5em;
+      text-align: left;
+    }
+    .more-value {
+      flex: 1;
+      text-align: right;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 400;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .more-chevron {
+      flex: 0 0 1em;
+      color: var(--muted);
+      font-size: 1rem;
+      text-align: center;
+      display: inline-block;
+      line-height: 1;
+    }
+    .selector-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(8, 12, 18, 0.5);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      backdrop-filter: blur(2px);
+    }
+    .selector-backdrop.hidden { display: none; }
+    .selector-card {
+      width: min(100%, 320px);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 18px 16px 16px;
+      box-shadow: var(--shadow);
+      animation: selectorIn 0.16s ease;
+    }
+    @keyframes selectorIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .selector-title {
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .selector-options {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .selector-options button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+      padding: 12px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .selector-options button:hover {
+      background: var(--chip-bg);
+    }
+    .selector-options button[aria-pressed="true"] {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .selector-check {
+      font-size: 0.9em;
+      opacity: 0.95;
+    }
+    .more-settings-body {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 4px 0 8px;
+      isolation: isolate;
+    }
+    .match-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      margin: 8px 0 4px;
+    }
+    .match-controls {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+    }
+    .match-controls-title {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .match-row-secondary {
+      margin-top: 0;
+    }
+    .match-half {
+      flex: 1 1 0;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 8px;
+      min-height: 48px;
+      background: transparent;
+    }
+    .match-half .more-label {
+      flex: none;
+      text-align: center;
+      min-width: 0;
+    }
+    .match-half[aria-pressed="true"] {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .confirm-danger {
+      border-color: var(--danger) !important;
+      color: var(--danger) !important;
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
+      font-weight: 600;
+    }
+    .confirm-danger:hover {
+      background: color-mix(in srgb, var(--danger) 20%, transparent);
+    }
+    .dropdown-pop {
+      position: absolute;
+      right: 8px;
+      z-index: 50;
+      min-width: 0;
+      width: max-content;
+      max-width: 120px;
+      padding: 0;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      animation: dropdownIn 0.12s ease;
+    }
+    .dropdown-pop.hidden { display: none; }
+    @keyframes dropdownIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .dropdown-pop button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.92rem;
+      padding: 11px 14px;
+      width: 100%;
+      text-align: center;
+      cursor: pointer;
+      display: block;
+      white-space: nowrap;
+      border-radius: 0;
+    }
+    .dropdown-pop button:first-child {
+      border-radius: 9px 9px 0 0;
+    }
+    .dropdown-pop button:last-child {
+      border-radius: 0 0 9px 9px;
+    }
+    .dropdown-pop button:only-child {
+      border-radius: 9px;
+    }
+    .dropdown-pop button:hover {
+      background: var(--chip-bg);
+    }
+    .dropdown-pop button[aria-pressed="true"] {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .selector-cancel {
+      width: 100%;
+      margin-top: 12px;
+    }
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(8, 12, 18, 0.5);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .sheet-backdrop.hidden { display: none; }
+    .sheet {
+      width: min(100%, 480px);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 16px 16px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      padding: 10px 16px 20px;
+      box-shadow: var(--shadow);
+      animation: sheetUp 0.22s ease;
+    }
+    @keyframes sheetUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border);
+      margin: 4px auto 12px;
+    }
+    .sheet-title {
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .sheet-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .sheet-options button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--chip-bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.95rem;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .sheet-options button[aria-pressed="true"] {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .sheet-cancel {
+      width: 100%;
+      margin-top: 12px;
+    }
+    .lang-modal-card {
+      width: min(100%, 360px);
+      max-height: min(88vh, 560px);
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+    .lang-modal-card .lang-picker {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: visible;
+      margin: 0;
+      gap: 0;
+      padding-bottom: 8px;
+    }
+    .mute-btn .icon-muted { display: none; }
+    .mute-btn.is-muted .icon-on { display: none; }
+    .mute-btn.is-muted .icon-muted { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud" id="statsRow">
+      <div class="stat" id="statScore"><span id="labelScore">得分</span><strong id="score">0</strong></div>
+      <div class="stat" id="statBest"><span id="labelBest">最高分</span><strong id="best">0</strong></div>
+      <div class="stat" id="statLength"><span id="labelLength">长度</span><strong id="speed">3</strong></div>
+      <div class="stat" id="statLives"><span id="labelLives">生命</span><strong id="lives">3/3</strong></div>
+    </div>
+    <div class="board">
+      <canvas id="game" width="480" height="480" aria-label="Snake game"></canvas>
+      <div class="overlay" id="overlay">
+        <div>
+          <h1 id="gameTitle" class="start-title">贪吃蛇</h1>
+          <h2 id="overlayTitle" class="hidden">贪吃蛇</h2>
+          <p id="overlayText"></p>
+          <div class="overlay-actions" id="overlayActions">
+            <button class="btn btn-ghost" id="startBtn" type="button">单人游戏</button>
+            <button class="btn btn-ghost" id="versusBtn" type="button">双人对战</button>
+            <button class="btn btn-ghost" id="aiBtn" type="button">人机对战</button>
+            <button class="btn btn-ghost" id="startRulesBtn" type="button">游戏规则</button>
+            <button class="btn btn-ghost" id="moreSettingsBtn" type="button">更多设置</button>
+            <button class="btn btn-ghost hidden" id="restartBtn" type="button">重新开始</button>
+            <button class="btn btn-ghost hidden" id="homeBtn" type="button">返回首页</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <footer id="footerHint">
+      操作：<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 或 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+      · <kbd class="kbd-wide">Space</kbd> / <kbd class="kbd-wide">Esc</kbd> 开始/暂停
+    </footer>
+  </div>
+
+  <div class="modal hidden" id="rulesModal" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="modal-card">
+      <h2 class="modal-title" id="rulesTitle">游戏规则</h2>
+      <div class="modal-body" id="rulesBody"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="rulesCloseBtn">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="langModal" role="dialog" aria-modal="true" aria-labelledby="langModalTitle">
+    <div class="modal-card lang-modal-card">
+      <h2 class="modal-title" id="langModalTitle">语言选项</h2>
+      <div class="lang-picker" id="langPicker">
+        <button type="button" data-lang-set="zh">简体中文</button>
+        <button type="button" data-lang-set="zt">繁體中文</button>
+        <button type="button" data-lang-set="en">English</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="langCloseBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="matchModal" role="dialog" aria-modal="true" aria-labelledby="matchModalTitle">
+    <div class="modal-card lang-modal-card">
+      <h2 class="modal-title" id="matchModalTitle">对战模式</h2>
+      <p class="versus-hint" id="matchModeHint" style="text-align:center;margin-bottom:10px"></p>
+      <div class="match-row match-row-primary">
+        <button type="button" class="more-row match-half" id="matchScoreBtn">
+          <span class="more-label">积分赛</span>
+        </button>
+        <button type="button" class="more-row match-half" id="matchSurvivalBtn">
+          <span class="more-label">生存赛</span>
+        </button>
+      </div>
+      <div class="match-controls hidden" id="aiControlsRow">
+        <div class="match-controls-title" id="ctrlTitle">操作方式</div>
+        <div class="match-row match-row-secondary">
+          <button type="button" class="more-row match-half" id="ctrlWasdBtn">
+            <span class="more-label">WASD</span>
+          </button>
+          <button type="button" class="more-row match-half" id="ctrlArrowBtn">
+            <span class="more-label">方向键</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="matchCancelBtn">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="moreModal" role="dialog" aria-modal="true" aria-labelledby="moreModalTitle">
+    <div class="modal-card lang-modal-card">
+      <h2 class="modal-title" id="moreModalTitle">更多设置</h2>
+      <div class="more-settings-body">
+        <button type="button" class="more-row" id="moreMuteBtn">
+          <span class="more-label" id="moreMuteLabel">音效</span>
+          <span class="more-value" id="moreMuteValue">开</span>
+          <span class="more-chevron"></span>
+        </button>
+        <button type="button" class="more-row" id="moreMusicBtn">
+          <span class="more-label" id="moreMusicLabel">音乐</span>
+          <span class="more-value" id="moreMusicValue">开</span>
+          <span class="more-chevron"></span>
+        </button>
+        <div class="volume-row" id="volumeRow">
+          <span class="more-label" id="volumeLabel">音量</span>
+          <input type="range" id="volumeSlider" min="0" max="100" step="1" value="100" />
+        </div>
+        <button type="button" class="more-row" id="moreLangBtn">
+          <span class="more-label" id="moreLangLabel">语言</span>
+          <span class="more-value" id="moreLangValue">简体中文</span>
+          <span class="more-chevron">▾</span>
+        </button>
+        <button type="button" class="more-row" id="moreThemeBtn">
+          <span class="more-label" id="moreThemeLabel">显示</span>
+          <span class="more-value" id="moreThemeValue">浅色</span>
+          <span class="more-chevron">▾</span>
+        </button>
+        <button type="button" class="more-row" id="moreDiffBtn">
+          <span class="more-label" id="moreDiffLabel">难度</span>
+          <span class="more-value" id="moreDiffValue">默认</span>
+          <span class="more-chevron">▾</span>
+        </button>
+        <button type="button" class="more-row" id="moreLivesBtn">
+          <span class="more-label" id="moreLivesLabel">初始生命</span>
+          <span class="more-value" id="moreLivesValue">3</span>
+          <span class="more-chevron">▾</span>
+        </button>
+        <div class="dropdown-pop hidden" id="dropdownPop"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="moreCloseBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="selector-backdrop hidden" id="selectorBackdrop" role="dialog" aria-modal="true" aria-labelledby="selectorTitle">
+    <div class="selector-card">
+      <h3 class="selector-title" id="selectorTitle">选择</h3>
+      <div class="selector-options" id="selectorOptions"></div>
+      <button type="button" class="btn btn-ghost selector-cancel" id="selectorCancelBtn">取消</button>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-card lang-modal-card">
+      <h2 class="modal-title" id="confirmTitle">确认返回首页？</h2>
+      <p class="versus-hint" id="confirmText" style="text-align:center;margin-bottom:12px">当前对局进度不会保存</p>
+      <div class="match-row">
+        <button type="button" class="more-row match-half" id="confirmCancelBtn">取消</button>
+        <button type="button" class="more-row match-half confirm-danger" id="confirmOkBtn">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- 简 / 繁 / EN ---
+    const LANG_KEY = "snake-lang";
+    const savedLang = localStorage.getItem(LANG_KEY);
+    let langMode = savedLang === "en" || savedLang === "zt" || savedLang === "zh" || savedLang === "system"
+      ? savedLang
+      : "system";
+    let lang = "zh";
+
+    function systemLang() {
+      const n = (navigator.language || "zh-CN").toLowerCase();
+      if (n.startsWith("en")) return "en";
+      if (n.includes("hant") || n.includes("tw") || n.includes("hk") || n.includes("mo")) return "zt";
+      if (n.startsWith("zh")) return "zh";
+      return "en";
+    }
+
+    function resolveLang() {
+      if (langMode === "system") return systemLang();
+      return langMode === "en" || langMode === "zt" ? langMode : "zh";
+    }
+
+    const footerZh = "单人：<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · 双人：P1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>，P2 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd><br /><kbd class=\"kbd-wide\">Space</kbd> / <kbd class=\"kbd-wide\">Esc</kbd> 开始/暂停";
+    const footerZt = "單人：<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · 雙人：P1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>，P2 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd><br /><kbd class=\"kbd-wide\">Space</kbd> / <kbd class=\"kbd-wide\">Esc</kbd> 開始/暫停";
+    const footerEn = "Solo: <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> · Versus: P1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, P2 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd><br /><kbd class=\"kbd-wide\">Space</kbd> / <kbd class=\"kbd-wide\">Esc</kbd> start/pause";
+
+    const rulesShared = (vs) => vs;
+
+    const I18N = {
+      zh: {
+        title: "贪吃蛇",
+        themeLight: "浅色",
+        themeDark: "深色",
+        themeSystem: "跟随系统",
+        langZh: "简体中文",
+        langZt: "繁體中文",
+        langEn: "English",
+        statusReady: "准备开始",
+        statusPlaying: "进行中",
+        statusPaused: "已暂停",
+        statusOver: "游戏结束",
+        labelScore: "得分",
+        labelBest: "最高分",
+        labelLength: "长度",
+        labelLives: "生命",
+        footer: footerZh,
+        startRules: "游戏规则",
+        startGame: "单人游戏",
+        langMenu: "语言",
+        langSystem: "跟随系统",
+        langClose: "关闭",
+        displayMenu: "显示",
+        moreSettings: "更多设置",
+        soundLabel: "音效",
+        soundOn: "开",
+        soundOff: "关",
+        musicLabel: "音乐",
+        startLivesLabel: "初始生命",
+        volumeLabel: "音量",
+        diffLabel: "难度",
+        diffEasy: "简单",
+        diffNormal: "默认",
+        diffHard: "困难",
+        ctrlArrows: "方向键",
+        ctrlTitle: "操作方式",
+        confirmHomeTitle: "确认返回首页？",
+        confirmHomeText: "当前对局进度不会保存",
+        confirmRestartTitle: "确定重新开始？",
+        confirmRestartText: "当前对局进度不会保存",
+        confirmOk: "确认",
+        confirmCancel: "取消",
+        sheetCancel: "取消",
+        home: "返回首页",
+        restartSame: "再来一局",
+        versus: "双人对战",
+        ai: "人机对战",
+        aiHint: "你（WASD，绿）对战电脑蛇（紫）· 抢苹果、比生命",
+        aiWin: "你赢了",
+        aiLose: "电脑获胜",
+        matchTitle: "对战模式",
+        matchScore: "积分赛",
+        matchSurvival: "生存赛",
+        matchCancel: "返回",
+        matchScoreHint: "双方生命耗尽后比分，分高者胜",
+        matchSurvivalHint: "先耗尽生命的一方落败",
+        scoreWinP1: "P1 获胜",
+        scoreWinP2: "P2 获胜",
+        scoreDraw: "平局",
+        scoreResult: (a, b) => `最终比分 P1 ${a} · P2 ${b}<br />按 Space 或点击按钮再来一局`,
+        versusHint: "P1：WASD（绿） · P2：方向键（橙）· 先耗尽生命者败",
+        p1Score: "P1 得分",
+        p1Lives: "P1 生命",
+        p2Score: "P2 得分",
+        p2Lives: "P2 生命",
+        winnerP1: "P1 获胜",
+        winnerP2: "P2 获胜",
+        drawTitle: "平局",
+        versusOver: (a, b) => `P1 ${a} 分 · P2 ${b} 分<br />按 Space 或点击按钮再来一局`,
+        resume: "继续",
+        restart: "再来一局",
+        restartLabel: "重新开始",
+        gotIt: "知道了",
+        pausedTitle: "已暂停",
+        pausedText: "按空格或 Esc 继续，或点击按钮",
+        overTitle: "游戏结束",
+        overText: (score, best) => `本局得分 <strong style="color:var(--accent)">${score}</strong>，最高分 ${best}<br />按 Space 或点击按钮再来一局`,
+        playingPrefix: "进行中",
+        reviveShield: (s, lives) => `复活无敌 · 剩余生命 ${lives}`,
+        wrapAlmost: (s) => `无敌将尽 ${s}s`,
+        wrap: (s) => `无敌 ${s}s`,
+        slow: (s) => `减速 ${s}s`,
+        magnet: (s) => `吸附 ${s}s`,
+        star: (s) => `星星 ${s}s`,
+        reviveShieldStatus: (s) => `复活无敌 ${s}s`,
+        rulesTitle: "游戏规则",
+        rulesBody: `
+        <h3>开始菜单</h3>
+        <ul>
+          <li>单人游戏 / 双人对战 / 人机对战</li>
+          <li>更多设置：语言、显示、音效、音量、初始生命、难度</li>
+        </ul>
+        <h3>怎么玩</h3>
+        <ul>
+          <li>Space 或 Esc 开始/暂停；结束后按 Space 再来一局</li>
+          <li>吃苹果得 10 分并变长；双人/人机场上常有 2–3 个苹果</li>
+        </ul>
+        <h3>单人</h3>
+        <ul>
+          <li>方向键或 WASD 控制</li>
+          <li>撞墙、撞自己或困难模式怪物会扣命；初始生命 1–5 可调</li>
+          <li>有命则原地复活并短暂闪烁无敌；生命为 0 结束</li>
+        </ul>
+        <h3>双人 / 人机</h3>
+        <ul>
+          <li>先选积分赛或生存赛</li>
+          <li>生存赛：先耗尽生命者落败</li>
+          <li>积分赛：一方用完命后，若另一方分已更高则直接获胜；双方都用完后比分</li>
+          <li>双人：P1 WASD（绿），P2 方向键（橙）</li>
+          <li>人机：可选 WASD 或方向键；电脑为紫蛇</li>
+          <li>撞墙、撞自己、撞对方身体或怪物都会扣命</li>
+        </ul>
+        <h3>难度</h3>
+        <ul>
+          <li>简单：更慢上限，苹果少刷在边缘</li>
+          <li>默认：标准速度</li>
+          <li>困难：出现紫色怪物与会移动的红怪</li>
+        </ul>
+        <h3>道具</h3>
+        <ul>
+          <li><strong>青色</strong>：穿墙无敌</li>
+          <li><strong>紫色</strong>：减速</li>
+          <li><strong>磁铁</strong>：吸引蛇头周围约 11×11 格内苹果</li>
+          <li><strong>星星</strong>：无敌并加速（较少见）</li>
+          <li><strong>红心</strong>：恢复 1 条命（稀有，上限为初始生命）</li>
+        </ul>`,
+      },
+      zt: {
+        title: "貪食蛇",
+        themeLight: "淺色",
+        themeDark: "深色",
+        themeSystem: "跟隨系統",
+        langZh: "简体中文",
+        langZt: "繁體中文",
+        langEn: "English",
+        statusReady: "準備開始",
+        statusPlaying: "進行中",
+        statusPaused: "已暫停",
+        statusOver: "遊戲結束",
+        labelScore: "分數",
+        labelBest: "最高分",
+        labelLength: "長度",
+        labelLives: "生命",
+        footer: footerZt,
+        startRules: "遊戲規則",
+        startGame: "單人遊戲",
+        langMenu: "語言",
+        langSystem: "跟隨系統",
+        langClose: "關閉",
+        displayMenu: "顯示",
+        moreSettings: "更多設定",
+        soundLabel: "音效",
+        soundOn: "開",
+        soundOff: "關",
+        musicLabel: "音樂",
+        startLivesLabel: "初始生命",
+        volumeLabel: "音量",
+        diffLabel: "難度",
+        diffEasy: "簡單",
+        diffNormal: "預設",
+        diffHard: "困難",
+        ctrlArrows: "方向鍵",
+        ctrlTitle: "操作方式",
+        confirmHomeTitle: "確認回首頁？",
+        confirmHomeText: "目前對局進度不會保存",
+        confirmRestartTitle: "確定重新開始？",
+        confirmRestartText: "目前對局進度不會保存",
+        confirmOk: "確認",
+        confirmCancel: "取消",
+        sheetCancel: "取消",
+        home: "回到主選單",
+        restartSame: "再玩一局",
+        versus: "雙人對戰",
+        ai: "對戰電腦",
+        aiHint: "你（WASD，綠）對戰電腦蛇（紫）· 搶蘋果、比生命",
+        aiWin: "你贏了",
+        aiLose: "電腦獲勝",
+        matchTitle: "對戰模式",
+        matchScore: "積分模式",
+        matchSurvival: "生存模式",
+        matchCancel: "返回",
+        matchScoreHint: "雙方生命用完後比分數，分數高者獲勝",
+        matchSurvivalHint: "先用完生命的一方落敗",
+        scoreWinP1: "P1 獲勝",
+        scoreWinP2: "P2 獲勝",
+        scoreDraw: "平手",
+        scoreResult: (a, b) => `最終比分 P1 ${a} · P2 ${b}<br />按 Space 或點擊按鈕再玩一局`,
+        versusHint: "P1：WASD（綠） · P2：方向鍵（橙）· 先用完生命者落敗",
+        p1Score: "P1 分數",
+        p1Lives: "P1 生命",
+        p2Score: "P2 分數",
+        p2Lives: "P2 生命",
+        winnerP1: "P1 獲勝",
+        winnerP2: "P2 獲勝",
+        drawTitle: "平手",
+        versusOver: (a, b) => `P1 ${a} 分 · P2 ${b} 分<br />按 Space 或點擊按鈕再玩一局`,
+        resume: "繼續",
+        restart: "再玩一局",
+        restartLabel: "重新開始",
+        gotIt: "知道了",
+        pausedTitle: "已暫停",
+        pausedText: "按空白鍵或 Esc 繼續，或點擊按鈕",
+        overTitle: "遊戲結束",
+        overText: (score, best) => `本回合分數 <strong style="color:var(--accent)">${score}</strong>，最高分 ${best}<br />按 Space 或點擊按鈕再玩一局`,
+        playingPrefix: "進行中",
+        reviveShield: (s, lives) => `復活無敵 · 剩餘生命 ${lives}`,
+        wrapAlmost: (s) => `無敵即將結束 ${s}s`,
+        wrap: (s) => `無敵 ${s}s`,
+        slow: (s) => `減速 ${s}s`,
+        magnet: (s) => `磁吸 ${s}s`,
+        star: (s) => `星星 ${s}s`,
+        reviveShieldStatus: (s) => `復活無敵 ${s}s`,
+        rulesTitle: "遊戲規則",
+        rulesBody: `
+        <h3>開始選單</h3>
+        <ul>
+          <li>單人遊戲 / 雙人對戰 / 對戰電腦</li>
+          <li>更多設定：語言、顯示、音效、音量、初始生命、難度</li>
+        </ul>
+        <h3>怎麼玩</h3>
+        <ul>
+          <li>Space 或 Esc 開始/暫停；結束後按 Space 再玩一局</li>
+          <li>吃蘋果得 10 分並變長；雙人/人機場上常有 2–3 顆蘋果</li>
+        </ul>
+        <h3>單人遊戲</h3>
+        <ul>
+          <li>方向鍵或 WASD 控制</li>
+          <li>撞牆、撞自己或困難模式怪物會扣命；初始生命 1–5 可調</li>
+          <li>有命則原地復活並短暫閃爍無敵；生命為 0 結束</li>
+        </ul>
+        <h3>雙人 / 對戰電腦</h3>
+        <ul>
+          <li>先選積分模式或生存模式</li>
+          <li>生存模式：先用完生命者落敗</li>
+          <li>積分模式：一方用完命後，若另一方分數已更高則直接獲勝；雙方都用完後比分</li>
+          <li>雙人：P1 WASD（綠），P2 方向鍵（橙）</li>
+          <li>對戰電腦：可選 WASD 或方向鍵；電腦為紫蛇</li>
+          <li>撞牆、撞自己、撞對方身體或怪物都會扣命</li>
+        </ul>
+        <h3>難度</h3>
+        <ul>
+          <li>簡單：更慢上限，蘋果少刷在邊緣</li>
+          <li>預設：標準速度</li>
+          <li>困難：出現紫色怪物與會移動的紅怪</li>
+        </ul>
+        <h3>道具</h3>
+        <ul>
+          <li><strong>青色</strong>：穿牆無敵</li>
+          <li><strong>紫色</strong>：減速</li>
+          <li><strong>磁鐵</strong>：吸引蛇頭周圍約 11×11 格內蘋果</li>
+          <li><strong>星星</strong>：無敵並加速（較少見）</li>
+          <li><strong>紅心</strong>：回復 1 條命（稀有，上限為初始生命）</li>
+        </ul>`,
+      },
+      en: {
+        title: "Snake",
+        themeLight: "Light",
+        themeDark: "Dark",
+        themeSystem: "Follow System",
+        langZh: "简体中文",
+        langZt: "繁體中文",
+        langEn: "English",
+        statusReady: "Ready",
+        statusPlaying: "Playing",
+        statusPaused: "Paused",
+        statusOver: "Game Over",
+        labelScore: "Score",
+        labelBest: "Best",
+        labelLength: "Length",
+        labelLives: "Lives",
+        footer: footerEn,
+        startRules: "Rules",
+        startGame: "Single Player",
+        langMenu: "Language",
+        langSystem: "System",
+        langClose: "Close",
+        displayMenu: "Display",
+        moreSettings: "More Settings",
+        soundLabel: "Sound",
+        soundOn: "On",
+        soundOff: "Off",
+        musicLabel: "Music",
+        startLivesLabel: "Starting Lives",
+        volumeLabel: "Volume",
+        diffLabel: "Difficulty",
+        diffEasy: "Easy",
+        diffNormal: "Normal",
+        diffHard: "Hard",
+        ctrlArrows: "Arrow Keys",
+        ctrlTitle: "Controls",
+        confirmHomeTitle: "Return to main menu?",
+        confirmHomeText: "Current game progress will not be saved",
+        confirmRestartTitle: "Restart this run?",
+        confirmRestartText: "Current game progress will not be saved",
+        confirmOk: "Confirm",
+        confirmCancel: "Cancel",
+        sheetCancel: "Cancel",
+        home: "Main Menu",
+        restartSame: "Play Again",
+        versus: "2 Players",
+        ai: "VS CPU",
+        aiHint: "You (WASD, green) vs CPU snake (purple) · race for apples and lives",
+        aiWin: "You Win",
+        aiLose: "CPU Wins",
+        matchTitle: "Match Type",
+        matchScore: "Score Match",
+        matchSurvival: "Survival",
+        matchCancel: "Back",
+        matchScoreHint: "When both run out of lives, higher score wins",
+        matchSurvivalHint: "First to run out of lives loses",
+        scoreWinP1: "P1 Wins",
+        scoreWinP2: "P2 Wins",
+        scoreDraw: "Draw",
+        scoreResult: (a, b) => `Final score P1 ${a} · P2 ${b}<br />Press Space or click to play again`,
+        versusHint: "P1: WASD (green) · P2: arrows (orange) · First to run out of lives loses",
+        p1Score: "P1 Score",
+        p1Lives: "P1 Lives",
+        p2Score: "P2 Score",
+        p2Lives: "P2 Lives",
+        winnerP1: "P1 Wins",
+        winnerP2: "P2 Wins",
+        drawTitle: "Draw",
+        versusOver: (a, b) => `P1 ${a} · P2 ${b}<br />Press Space or click the button to play again`,
+        resume: "Resume",
+        restart: "Play Again",
+        restartLabel: "Restart",
+        gotIt: "Got it",
+        pausedTitle: "Paused",
+        pausedText: "Press Space or Esc to resume, or use the button",
+        overTitle: "Game Over",
+        overText: (score, best) => `Score <strong style="color:var(--accent)">${score}</strong>, best ${best}<br />Press Space or click the button to play again`,
+        playingPrefix: "Playing",
+        reviveShield: (s, lives) => `Revive shield · lives ${lives}`,
+        wrapAlmost: (s) => `Invincible ending ${s}s`,
+        wrap: (s) => `Invincible ${s}s`,
+        slow: (s) => `Slow ${s}s`,
+        magnet: (s) => `Magnet ${s}s`,
+        star: (s) => `Star ${s}s`,
+        reviveShieldStatus: (s) => `Revive shield ${s}s`,
+        rulesTitle: "Game Rules",
+        rulesBody: `
+        <h3>Start Menu</h3>
+        <ul>
+          <li>Single Player / 2 Players / VS CPU</li>
+          <li>More Settings: language, display, sound, volume, starting lives, difficulty</li>
+        </ul>
+        <h3>How to play</h3>
+        <ul>
+          <li>Space or Esc start/pause; after game over, Space plays again</li>
+          <li>Eat apples: +10 points and grow; versus/AI often have 2–3 apples</li>
+        </ul>
+        <h3>Solo</h3>
+        <ul>
+          <li>Control with arrows or WASD</li>
+          <li>Wall, self, or Hard-mode monsters cost 1 life; starting lives 1–5</li>
+          <li>Revive on the spot with a blink shield; at 0 lives, game over</li>
+        </ul>
+        <h3>2 Players / VS CPU</h3>
+        <ul>
+          <li>Choose Score Match or Survival first</li>
+          <li>Survival: first to run out of lives loses</li>
+          <li>Score: if one side runs out and the other already has a higher score, that side wins; if both are out, higher score wins</li>
+          <li>2 Players: P1 WASD (green), P2 arrows (orange)</li>
+          <li>VS CPU: you may use WASD or arrow keys; CPU is the purple snake</li>
+          <li>Walls, self, the other body, or monsters cost a life</li>
+        </ul>
+        <h3>Difficulty</h3>
+        <ul>
+          <li>Easy: slower max speed; apples rarely at the edge</li>
+          <li>Normal: standard speed</li>
+          <li>Hard: purple monsters and moving red monsters</li>
+        </ul>
+        <h3>Power-ups</h3>
+        <ul>
+          <li><strong>Cyan</strong>: wall-pass invincible</li>
+          <li><strong>Purple</strong>: slow down</li>
+          <li><strong>Magnet</strong>: pulls apples within about 11×11 cells of your head</li>
+          <li><strong>Star</strong>: invincible + speed boost (uncommon)</li>
+          <li><strong>Heart</strong>: +1 life (rare, up to starting lives)</li>
+        </ul>`,
+      },
+    };
+
+    function t(key, ...args) {
+      const pack = I18N[lang] || I18N.zh;
+      const v = pack[key];
+      return typeof v === "function" ? v(...args) : v;
+    }
+
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function applyLang(next) {
+      langMode = next === "en" || next === "zt" || next === "system" ? next : "zh";
+      lang = resolveLang();
+      localStorage.setItem(LANG_KEY, langMode);
+      document.documentElement.lang =
+        lang === "en" ? "en" : lang === "zt" ? "zh-Hant" : "zh-CN";
+
+      setText("gameTitle", t("title"));
+      setText("labelScore", t("labelScore"));
+      setText("labelBest", t("labelBest"));
+      setText("labelLength", t("labelLength"));
+      setText("labelLives", t("labelLives"));
+      const footer = document.getElementById("footerHint");
+      if (footer) footer.innerHTML = t("footer");
+      setText("rulesTitle", t("rulesTitle"));
+      const rulesBody = document.getElementById("rulesBody");
+      if (rulesBody) rulesBody.innerHTML = t("rulesBody");
+      setText("rulesCloseBtn", t("gotIt"));
+      setText("versusBtn", t("versus"));
+      setText("aiBtn", t("ai"));
+      setText("startBtn", t("startGame"));
+      setText("startRulesBtn", t("startRules"));
+      setText("moreSettingsBtn", t("moreSettings"));
+      setText("homeBtn", t("home"));
+      setText("restartBtn", t("restartLabel"));
+      setText("rulesCloseBtn", t("gotIt"));
+      setText("moreSettingsBtn", t("moreSettings"));
+      setText("moreModalTitle", t("moreSettings"));
+      setText("moreLangLabel", t("langMenu"));
+      setText("moreThemeLabel", t("displayMenu"));
+      setText("moreCloseBtn", t("langClose"));
+      setText("homeBtn", t("home"));
+      setText("langModalTitle", t("langMenu"));
+      setText("langCloseBtn", t("langClose"));
+      setText("moreMuteLabel", t("soundLabel"));
+      setText("moreMusicLabel", t("musicLabel"));
+      setText("moreMusicValue", musicOn ? t("soundOn") : t("soundOff"));
+      setText("moreLivesLabel", t("startLivesLabel"));
+      setText("moreLivesValue", String(startLives));
+      setText("volumeLabel", t("volumeLabel"));
+      setText("moreDiffLabel", t("diffLabel"));
+      setText(
+        "moreDiffValue",
+        difficulty === "easy"
+          ? t("diffEasy")
+          : difficulty === "hard"
+            ? t("diffHard")
+            : t("diffNormal")
+      );
+      setText("matchModalTitle", t("matchTitle"));
+      sortMoreSettingsByLabelLength();
+      const _msb = document.getElementById("matchScoreBtn");
+      const _msub = document.getElementById("matchSurvivalBtn");
+      if (_msb) _msb.querySelector(".more-label").textContent = t("matchScore");
+      if (_msub) _msub.querySelector(".more-label").textContent = t("matchSurvival");
+      setText("matchCancelBtn", t("matchCancel"));
+      updateMoreMuteLabel();
+      // 主行显示当前值
+      setText(
+        "moreLangValue",
+        langMode === "system"
+          ? t("langSystem")
+          : lang === "en"
+            ? "English"
+            : lang === "zt"
+              ? "繁體中文"
+              : "简体中文"
+      );
+      const themeMode = localStorage.getItem(THEME_KEY) || "system";
+      setText(
+        "moreThemeValue",
+        themeMode === "light"
+          ? t("themeLight")
+          : themeMode === "dark"
+            ? t("themeDark")
+            : t("themeSystem")
+      );
+      // 语言选项固定用各自母语名称
+      document.querySelectorAll("[data-lang-set]").forEach((btn) => {
+        const code = btn.dataset.langSet;
+        btn.textContent =
+          code === "zh" ? "简体中文" : code === "zt" ? "繁體中文" : "English";
+        btn.setAttribute("aria-pressed", code === lang ? "true" : "false");
+      });
+      if (typeof refreshStatsUI === "function") refreshStatsUI();
+      if (typeof setMuted === "function") setMuted(muted);
+    }
+
+    // --- 主题：浅色 / 深色 / 跟随系统 ---
+    const THEME_KEY = "snake-theme-mode";
+    const themeButtons = () => document.querySelectorAll("[data-theme-set]");
+
+    function systemPrefersDark() {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+
+    function resolveTheme(mode) {
+      if (mode === "light" || mode === "dark") return mode;
+      return systemPrefersDark() ? "dark" : "light";
+    }
+
+    function applyThemeMode(mode) {
+      const resolved = resolveTheme(mode);
+      document.documentElement.setAttribute("data-theme", resolved);
+      localStorage.setItem(THEME_KEY, mode);
+      themeButtons().forEach((btn) => {
+        btn.setAttribute("aria-pressed", btn.dataset.themeSet === mode ? "true" : "false");
+      });
+      const themeValueEl = document.getElementById("moreThemeValue");
+      if (themeValueEl && typeof t === "function") {
+        themeValueEl.textContent =
+          mode === "light"
+            ? t("themeLight")
+            : mode === "dark"
+              ? t("themeDark")
+              : t("themeSystem");
+      }
+      if (typeof draw === "function" && typeof snake !== "undefined" && snake) {
+        draw();
+      }
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem(THEME_KEY) || "system";
+      applyThemeMode(saved === "light" || saved === "dark" || saved === "system" ? saved : "system");
+      themeButtons().forEach((btn) => {
+        btn.addEventListener("click", () => applyThemeMode(btn.dataset.themeSet));
+      });
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+        if ((localStorage.getItem(THEME_KEY) || "system") === "system") {
+          applyThemeMode("system");
+        }
+      });
+    }
+
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const startBtn = document.getElementById("startBtn");
+    const startRulesBtn = document.getElementById("startRulesBtn");
+    const versusBtn = document.getElementById("versusBtn");
+    const aiBtn = document.getElementById("aiBtn");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const speedEl = document.getElementById("speed");
+    const livesEl = document.getElementById("lives");
+    const statusEl = { textContent: "" }; // 状态栏已移除
+
+    const COLS = 24;
+    const ROWS = 24;
+    const CELL = canvas.width / COLS;
+    const START_LEN = 3;
+    const BASE_MS = 220; // 开局间隔（偏慢，好上手）
+    const MIN_MS = 125; // 最快也不低于此值，削弱上限速度，减少贴边暴毙
+    const MS_PER_SEG = 3.5; // 每多 1 节缩短的间隔（略缓，逼近上限更慢）
+    // 吃到苹果后的短暂减速：蛇越长，放慢幅度越小（更难喘息）
+    const EAT_SLOW_MAX = 1.55;
+    const EAT_SLOW_MIN = 1.08;
+    const EAT_SLOW_DECAY = 0.012; // 每多 1 节，放慢倍率减少这么多
+    const EASE = 0.1; // 每步向 1.0 收敛的比例（渐进恢复）
+    const BEST_KEY = "snake-best-score";
+    const MILESTONE_STEP = 50; // 每 50 分一次阶段恭喜（5 颗苹果）
+
+    // 小道具
+    const PROP_WRAP_MS = 12000; // 穿墙无敌时长
+    const PROP_SLOW_MS = 8000; // 减速时长
+    const PROP_MAGNET_MS = 8000; // 吸附苹果时长（8s）
+    const PROP_STAR_MS = 9000; // 星星：无敌+加速
+    const PROP_BLINK_MS = 3000; // 无敌结束前闪烁提示
+    const PROP_STAR_BLINK_MS = 2500; // 星星结束前闪烁
+    const PROP_BLINK_PERIOD_MS = 320; // 闪烁周期（越大越慢）
+    const PROP_SLOW_FACTOR = 1.55; // 减速时 tick 倍率
+    const PROP_STAR_SPEED = 0.7; // 星星加速：间隔 ×0.7
+    const PROP_MAGNET_PULL_MS = 90; // 苹果飞向目标的间隔（越小越快）
+    const PROP_MAGNET_RANGE = 5; // 仅吸附蛇头周围 (2R+1)×(2R+1) 格内的苹果，此处为 11×11
+    const PROP_MAGNET_MISS_MAX = 4; // 追蛇头连续受阻几次后改飞蛇身中段
+    const PROP_MAGNET_SPAWN_DELAY = 1200; // 吃到吸附后，多久可能刷出无敌/减速
+    const PROP_FIRST_SPAWN_MS = 9000; // 开局多久后可能出现第一个道具
+    const PROP_RESPAWN_GAP_MS = 7000; // 无敌/减速效果结束后，再等多久才允许刷下一个
+    const PROP_LIFE_CHANCE = 0.08; // 稀有加命道具刷新概率
+    const START_LIVES_KEY = "snake-start-lives";
+    const DIFF_KEY = "snake-difficulty";
+    let startLives = (() => {
+      const n = Number(localStorage.getItem(START_LIVES_KEY));
+      return n >= 1 && n <= 5 ? n : 3;
+    })();
+    let difficulty = (() => {
+      const d = localStorage.getItem(DIFF_KEY);
+      return d === "easy" || d === "hard" ? d : "normal";
+    })();
+    let obstacles = []; // [{x,y}] 困难模式障碍格
+    let movers = []; // [{x,y,vx,vy,nextAt}] 移动怪物
+    const MOVER_MS = 620;
+    function maxLives() {
+      return startLives;
+    }
+    function minTickMs() {
+      if (difficulty === "easy") return 150;
+      if (difficulty === "hard") return 110;
+      return MIN_MS;
+    }
+    function edgeFoodWeight(x, y) {
+      // 距边界越近权重越高（简单模式会惩罚边缘）
+      const m = Math.min(x, y, COLS - 1 - x, ROWS - 1 - y);
+      return m;
+    }
+    const PROP_STAR_CHANCE = 0.15; // 星星：低于普通道具，高于加命
+    const REVIVE_SHIELD_MS = 3000; // 复活后无敌闪烁时长
+
+    let snake, dir, nextDir, foods, score, best, timer, running, dead;
+    let lives = maxLives();
+    let speedEase = 1; // 1 = 按长度的正常速度；>1 = 暂时偏慢
+    let nextMilestone = MILESTONE_STEP;
+    let runStartBest = 0; // 本局开始时的历史最高分
+    let newRecordPlayed = false;
+    let prop = null; // 场上唯一道具 {x,y,type:'wrap'|'slow'|'magnet'|'life'|'star'}
+    let wrapUntil = 0;
+    let slowUntil = 0;
+    let magnetUntil = 0;
+    let starUntil = 0;
+    let lastMagnetPull = 0;
+    let magnetMissCount = 0; // 追蛇头连续受阻次数
+    let magnetAimMid = false; // true 后改飞蛇身中段
+    let nextPropAt = 0;
+    let rafId = 0;
+    let reviveShieldUntil = 0;
+
+    // --- 双人/人机 ---
+    let gameMode = "solo"; // solo | versus | ai
+    let matchType = "survival"; // survival | score
+    let pendingMatchKind = "versus"; // versus | ai
+    const AI_CTRL_KEY = "snake-ai-controls";
+    let aiControls = localStorage.getItem(AI_CTRL_KEY) === "arrows" ? "arrows" : "wasd";
+    let versusPlayers = [];
+
+    function finishMatch(result) {
+      dead = true;
+      running = false;
+      clearTimeout(timer);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      const p1 = versusPlayers[0];
+      const p2 = versusPlayers[1];
+      let title;
+      let text;
+      if (matchType === "score") {
+        title =
+          result === "p1"
+            ? t("scoreWinP1")
+            : result === "p2"
+              ? t("scoreWinP2")
+              : t("scoreDraw");
+        text = t("scoreResult", p1.score, p2.score);
+        if (result === "p1" || result === "p2") playMilestone();
+        else playGameOverMusic();
+      } else {
+        if (gameMode === "ai") {
+          title =
+            result === "p1" ? t("aiWin") : result === "p2" ? t("aiLose") : t("drawTitle");
+        } else {
+          title =
+            result === "p1"
+              ? t("winnerP1")
+              : result === "p2"
+                ? t("winnerP2")
+                : t("drawTitle");
+        }
+        text = t("versusOver", p1.score, p2.score);
+        if (result === "p1") playMilestone();
+        else playGameOverMusic();
+      }
+      statusEl.textContent = title;
+      draw();
+      setOverlay(title, text, t("restartSame"), true, { showHome: true });
+    }
+
+    function checkMatchEnd() {
+      const p1 = versusPlayers[0];
+      const p2 = versusPlayers[1];
+      if (matchType === "score") {
+        // 一方牺牲后：若另一方分数已更高，直接结束并判其获胜
+        if (p1.dead && !p2.dead && p2.score > p1.score) {
+          finishMatch("p2");
+          return true;
+        }
+        if (p2.dead && !p1.dead && p1.score > p2.score) {
+          finishMatch("p1");
+          return true;
+        }
+        if (p1.dead && p2.dead) {
+          if (p1.score > p2.score) finishMatch("p1");
+          else if (p2.score > p1.score) finishMatch("p2");
+          else finishMatch("draw");
+          return true;
+        }
+        return false;
+      }
+      // 生存赛：先没命的一方立刻输
+      if (p1.dead && p2.dead) {
+        finishMatch("draw");
+        return true;
+      }
+      if (p2.dead) {
+        finishMatch("p1");
+        return true;
+      }
+      if (p1.dead) {
+        finishMatch("p2");
+        return true;
+      }
+      return false;
+    }
+
+    function makeVersusPlayer(id, body, facing) {
+      return {
+        id,
+        snake: body,
+        dir: { ...facing },
+        nextDir: { ...facing },
+        lives: maxLives(),
+        score: 0,
+        speedEase: 1,
+        dead: false,
+        wrapUntil: 0,
+        slowUntil: 0,
+        magnetUntil: 0,
+        starUntil: 0,
+        lastMagnetPull: 0,
+        magnetMissCount: 0,
+        magnetAimMid: false,
+        reviveShieldUntil: 0,
+      };
+    }
+
+    function initVersusPlayers() {
+      const y = Math.floor(ROWS / 2);
+      const p1 = [];
+      for (let i = 0; i < START_LEN; i++) p1.push({ x: 3 + i, y });
+      const p2 = [];
+      for (let i = 0; i < START_LEN; i++) p2.push({ x: COLS - 4 - i, y });
+      versusPlayers = [
+        makeVersusPlayer(0, p1, { x: 1, y: 0 }),
+        makeVersusPlayer(1, p2, { x: -1, y: 0 }),
+      ];
+    }
+
+    function isBlockedCell(x, y, selfSnake, otherSnake, protectedHit) {
+      if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return !protectedHit;
+      if (selfSnake.some((s) => s.x === x && s.y === y)) return !protectedHit;
+      if (otherSnake && otherSnake.some((s) => s.x === x && s.y === y)) return !protectedHit;
+      return false;
+    }
+
+    function aiPickDirection(p, other) {
+      const head = p.snake[0];
+      const prot = versusPlayerHitProtected(p);
+      const candidates = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+      ].filter((d) => !(d.x === -p.dir.x && d.y === -p.dir.y));
+
+      // 目标：优先近处道具，否则最近的苹果
+      let target = nearestFood(head.x, head.y);
+      if (prop) {
+        const dProp = Math.abs(prop.x - head.x) + Math.abs(prop.y - head.y);
+        const dFood = Math.abs(target.x - head.x) + Math.abs(target.y - head.y);
+        if (dProp + 2 < dFood) target = prop;
+      }
+
+      const scored = candidates.map((d) => {
+        const nx = head.x + d.x;
+        const ny = head.y + d.y;
+        const blocked = isBlockedCell(nx, ny, p.snake, other.snake, prot) || hitsObstacle(nx, ny);
+        const dist = Math.abs(target.x - nx) + Math.abs(target.y - ny);
+        // 安全优先，其次靠近目标
+        return { d, blocked, dist, score: (blocked ? 1000 : 0) + dist };
+      });
+      scored.sort((a, b) => a.score - b.score);
+      return scored[0].d;
+    }
+
+    function aiBrainTick() {
+      const ai = versusPlayers[1];
+      if (!ai || ai.dead) return;
+      const human = versusPlayers[0];
+      const d = aiPickDirection(ai, human);
+      ai.nextDir = { x: d.x, y: d.y };
+    }
+
+    function startAIMode() {
+      ensureAudio();
+      stopBgm();
+      gameMode = "ai";
+      dead = false;
+      running = true;
+      score = 0;
+      lives = maxLives();
+      speedEase = 1;
+      prop = null;
+      wrapUntil = slowUntil = magnetUntil = starUntil = 0;
+      reviveShieldUntil = 0;
+      nextPropAt = performance.now() + PROP_FIRST_SPAWN_MS;
+      spawnObstacles();
+      ensurePropAnim();
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      initVersusPlayers();
+      spawnFoodVersus();
+      refreshStatsUI();
+      statusEl.textContent = t("statusPlaying");
+      setOverlay("", "", "", false);
+      draw();
+      scheduleVersus();
+    }
+
+    function versusPlayerHitProtected(p) {
+      const now = performance.now();
+      return (
+        now < p.wrapUntil ||
+        now < p.starUntil ||
+        now < p.reviveShieldUntil
+      );
+    }
+
+    function versusLoseLife(p, deathX, deathY) {
+      p.lives -= 1;
+      playLoseLife();
+      if (p.lives <= 0) {
+        p.dead = true;
+        p.snake = [];
+        return false;
+      }
+      // 清空该玩家道具并原地复活
+      p.wrapUntil = p.slowUntil = p.magnetUntil = p.starUntil = 0;
+      p.lastMagnetPull = 0;
+      p.magnetMissCount = 0;
+      p.magnetAimMid = false;
+      const keepLen = p.snake.length || START_LEN;
+      const facing = p.dir;
+      // 复用 solo 摆放逻辑：临时用 snake/dir 再写回
+      const savedSnake = snake;
+      const savedDir = dir;
+      const savedNext = nextDir;
+      snake = p.snake;
+      dir = facing;
+      placeSnakeAtDeath(deathX, deathY, keepLen, facing);
+      p.snake = snake;
+      p.dir = dir;
+      p.nextDir = { ...dir };
+      snake = savedSnake;
+      dir = savedDir;
+      nextDir = savedNext;
+      p.speedEase = 1;
+      p.reviveShieldUntil = performance.now() + REVIVE_SHIELD_MS;
+      playRevive();
+      return true;
+    }
+
+    function stepVersusPlayer(p, others) {
+      if (p.dead) return;
+      p.dir = p.nextDir;
+      const head = {
+        x: p.snake[0].x + p.dir.x,
+        y: p.snake[0].y + p.dir.y,
+      };
+
+      if (versusPlayerHitProtected(p)) {
+        if (head.x < 0) head.x = COLS - 1;
+        else if (head.x >= COLS) head.x = 0;
+        if (head.y < 0) head.y = ROWS - 1;
+        else if (head.y >= ROWS) head.y = 0;
+      }
+
+      const hitWall =
+        head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS;
+      const hitSelf = p.snake.some((s) => s.x === head.x && s.y === head.y);
+      const hitOther = others.some((o) =>
+        o.snake.some((s) => s.x === head.x && s.y === head.y)
+      );
+      const hitObs = hitsObstacle(head.x, head.y);
+
+      if (hitWall || ((hitSelf || hitOther || hitObs) && !versusPlayerHitProtected(p))) {
+        const dx = hitWall
+          ? Math.max(0, Math.min(COLS - 1, head.x))
+          : head.x;
+        const dy = hitWall
+          ? Math.max(0, Math.min(ROWS - 1, head.y))
+          : head.y;
+        versusLoseLife(p, dx, dy);
+        return;
+      }
+
+      p.snake.unshift(head);
+
+      if (prop && head.x === prop.x && head.y === prop.y) {
+        // 简化：双人吃到道具归该玩家
+        const type = prop.type;
+        const now = performance.now();
+        if (type === "life") {
+          p.lives = Math.min(maxLives(), p.lives + 1);
+          nextPropAt = now + 2500;
+          playPropPickup("life");
+        } else if (type === "wrap") {
+          p.wrapUntil = now + PROP_WRAP_MS;
+          nextPropAt = now + PROP_WRAP_MS + PROP_RESPAWN_GAP_MS;
+          playPropPickup("wrap");
+        } else if (type === "star") {
+          p.starUntil = now + PROP_STAR_MS;
+          nextPropAt = now + PROP_STAR_MS + PROP_RESPAWN_GAP_MS;
+          playPropPickup("star");
+        } else if (type === "magnet") {
+          p.magnetUntil = now + PROP_MAGNET_MS;
+          p.lastMagnetPull = now;
+          p.magnetMissCount = 0;
+          p.magnetAimMid = false;
+          nextPropAt = now + PROP_MAGNET_SPAWN_DELAY;
+          playPropPickup("magnet");
+        } else {
+          p.slowUntil = now + PROP_SLOW_MS;
+          nextPropAt = now + PROP_SLOW_MS + PROP_RESPAWN_GAP_MS;
+          playPropPickup("slow");
+        }
+        prop = null;
+      }
+
+      const fi = foodIndexAt(head.x, head.y);
+      if (fi >= 0) {
+        foods.splice(fi, 1);
+        p.score += 10;
+        p.speedEase = eatSlowFor(p.snake.length);
+        playEat();
+        afterEatFood();
+      } else {
+        p.snake.pop();
+        p.speedEase += (1 - p.speedEase) * EASE;
+      }
+    }
+
+    function maybeSpawnPropShared() {
+      // 双人/人机共用场上道具
+      const now = performance.now();
+      if (prop || now < nextPropAt) return;
+      const occupied = occupiedCells();
+      let x, y, tries = 0;
+      do {
+        x = randInt(COLS);
+        y = randInt(ROWS);
+        tries++;
+      } while (occupied.has(`${x},${y}`) && tries < 120);
+
+      if (Math.random() < PROP_LIFE_CHANCE) {
+        prop = { x, y, type: "life" };
+        return;
+      }
+      if (Math.random() < PROP_STAR_CHANCE) {
+        prop = { x, y, type: "star" };
+        return;
+      }
+      const roll = Math.random();
+      const type = roll < 0.34 ? "wrap" : roll < 0.67 ? "slow" : "magnet";
+      prop = { x, y, type };
+    }
+
+    function stepVersus() {
+      if (!running || dead) return;
+      if (gameMode === "ai") aiBrainTick();
+      const p1 = versusPlayers[0];
+      const p2 = versusPlayers[1];
+      stepVersusPlayer(p1, [p2]);
+      stepVersusPlayer(p2, [p1]);
+      maybeSpawnPropShared();
+      stepMovers();
+      refreshStatsUI();
+      draw();
+      if (checkMatchEnd()) return;
+      scheduleVersus();
+    }
+
+    function scheduleVersus() {
+      clearTimeout(timer);
+      if (!running || dead) return;
+      const alive = versusPlayers.filter((p) => !p.dead);
+      let mult = 1;
+      alive.forEach((p) => {
+        const base = tickMs(p.snake.length);
+        let m = p.speedEase;
+        if (performance.now() < p.slowUntil) m *= PROP_SLOW_FACTOR;
+        if (performance.now() < p.starUntil) m *= PROP_STAR_SPEED;
+        mult = Math.min(mult === 1 ? m : mult, m);
+      });
+      // 取较快者步进，保证双方都动
+      let fastest = Infinity;
+      versusPlayers.forEach((p) => {
+        if (p.dead) return;
+        const base = tickMs(p.snake.length);
+        let m = p.speedEase;
+        if (performance.now() < p.slowUntil) m *= PROP_SLOW_FACTOR;
+        if (performance.now() < p.starUntil) m *= PROP_STAR_SPEED;
+        fastest = Math.min(fastest, base * m);
+      });
+      if (!isFinite(fastest)) fastest = tickMs(START_LEN);
+      timer = setTimeout(stepVersus, fastest);
+    }
+
+    function versusTurn(playerIndex, nx, ny) {
+      const p = versusPlayers[playerIndex];
+      if (!p || p.dead) return;
+      if (nx === -p.dir.x && ny === -p.dir.y) return;
+      p.nextDir = { x: nx, y: ny };
+    }
+
+    function refreshStatsUI() {
+      const labelScore = document.getElementById("labelScore");
+      const labelBest = document.getElementById("labelBest");
+      const labelLength = document.getElementById("labelLength");
+      const labelLives = document.getElementById("labelLives");
+      const scoreEl = document.getElementById("score");
+      const bestEl = document.getElementById("best");
+      const speedEl = document.getElementById("speed");
+      const livesEl = document.getElementById("lives");
+
+      if (gameMode === "versus") {
+        labelScore.textContent = t("p1Score");
+        labelBest.textContent = t("p1Lives");
+        labelLength.textContent = t("p2Score");
+        labelLives.textContent = t("p2Lives");
+        scoreEl.textContent = String(versusPlayers[0] ? versusPlayers[0].score : 0);
+        bestEl.textContent = String(versusPlayers[0] ? versusPlayers[0].lives : 0);
+        speedEl.textContent = String(versusPlayers[1] ? versusPlayers[1].score : 0);
+        livesEl.textContent = String(versusPlayers[1] ? versusPlayers[1].lives : 0);
+      } else {
+        labelScore.textContent = t("labelScore");
+        labelBest.textContent = t("labelBest");
+        labelLength.textContent = t("labelLength");
+        labelLives.textContent = t("labelLives");
+        scoreEl.textContent = String(score || 0);
+        bestEl.textContent = String(best || 0);
+        speedEl.textContent = snake ? String(snake.length) : "3";
+        livesEl.textContent = `${lives}/${maxLives()}`;
+      }
+    }
+
+    function drawVersusSnake(p, isP1) {
+      const now = performance.now();
+      const blinking =
+        now < p.reviveShieldUntil ||
+        (p.starUntil - now > 0 && p.starUntil - now <= PROP_STAR_BLINK_MS) ||
+        (p.wrapUntil - now > 0 && p.wrapUntil - now <= PROP_BLINK_MS);
+      if (blinking) {
+        const phase = Math.floor(now / PROP_BLINK_PERIOD_MS) % 2;
+        ctx.globalAlpha = phase === 0 ? 0.32 : 1;
+      }
+      p.snake.forEach((seg, i) => {
+        const t0 = i / Math.max(1, p.snake.length - 1);
+        let r, g, b;
+        if (now < p.wrapUntil) {
+          r = 76; g = 200; b = 240;
+        } else if (now < p.starUntil) {
+          r = 255; g = 214; b = 70;
+        } else if (isP1) {
+          r = Math.round(61 - t0 * 20);
+          g = Math.round(220 - t0 * 80);
+          b = Math.round(151 - t0 * 40);
+        } else if (gameMode === "ai") {
+          // AI 蛇：紫色
+          r = Math.round(180 - t0 * 40);
+          g = Math.round(90 + t0 * 10);
+          b = Math.round(220 - t0 * 30);
+        } else {
+          r = Math.round(255 - t0 * 30);
+          g = Math.round(140 - t0 * 40);
+          b = Math.round(60 + t0 * 10);
+        }
+        drawCell(seg.x, seg.y, `rgb(${r},${g},${b})`, 2);
+      });
+      if (p.snake[0]) {
+        const o = cellOrigin(p.snake[0].x, p.snake[0].y);
+        ctx.fillStyle = "rgba(255,255,255,0.28)";
+        ctx.fillRect(o.x + 5, o.y + 5, CELL - 10, CELL - 10);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawVersus() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+      drawObstacles();
+      drawFood();
+      drawProp();
+      versusPlayers.forEach((p, i) => drawVersusSnake(p, i === 0));
+    }
+
+    // --- 音效（Web Audio，无外部文件）---
+    const MUTE_KEY = "snake-muted";
+    const VOL_KEY = "snake-volume";
+    const MUSIC_KEY = "snake-music";
+    let muted = localStorage.getItem(MUTE_KEY) === "1";
+    let musicOn = localStorage.getItem(MUSIC_KEY) !== "0"; // 默认开
+    let volume = (() => {
+      const raw = localStorage.getItem(VOL_KEY);
+      const n = Number(raw);
+      // 默认 100
+      return raw === null ? 100 : n >= 0 && n <= 100 ? n : 100;
+    })();
+    let audioCtx = null;
+
+    function setMuted(next) {
+      muted = !!next;
+      localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+      updateMoreMuteLabel();
+      syncBgm();
+    }
+
+    function updateMoreMuteLabel() {
+      const label = document.getElementById("moreMuteLabel");
+      if (label) label.textContent = t("soundLabel");
+      const val = document.getElementById("moreMuteValue");
+      if (val) val.textContent = muted ? t("soundOff") : t("soundOn");
+      document.querySelectorAll("[data-sound-set]").forEach((btn) => {
+        const on = btn.dataset.soundSet === "on";
+        btn.textContent = on ? t("soundOn") : t("soundOff");
+        btn.setAttribute(
+          "aria-pressed",
+          (on && !muted) || (!on && muted) ? "true" : "false"
+        );
+      });
+    }
+
+    function ensureAudio() {
+      if (muted) return null;
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playTone({ freq = 440, endFreq, duration = 0.12, type = "sine", gain = 0.08, when = 0 }) {
+      if (muted) return;
+      const ctxA = ensureAudio();
+      if (!ctxA) return;
+      const t0 = ctxA.currentTime + when;
+      const osc = ctxA.createOscillator();
+      const g = ctxA.createGain();
+      const vol = volume / 100;
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t0 + duration);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * vol), t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+      osc.connect(g);
+      g.connect(ctxA.destination);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.02);
+    }
+
+    // --- 开始菜单循环音乐 ---
+    let bgmTimer = null;
+    let bgmStep = 0;
+    const BGM_NOTES = [
+      // A 段：明亮上行
+      [392, 0.24], [440, 0.24], [494, 0.24], [523, 0.36],
+      [587, 0.24], [523, 0.24], [494, 0.48],
+      // B 段：回旋
+      [440, 0.24], [494, 0.24], [440, 0.24], [392, 0.36],
+      [330, 0.24], [392, 0.24], [440, 0.48],
+      // C 段：展开
+      [523, 0.24], [587, 0.24], [659, 0.36], [587, 0.24],
+      [523, 0.24], [494, 0.24], [440, 0.48],
+      // D 段：回落收束
+      [392, 0.24], [349, 0.24], [330, 0.36], [294, 0.24],
+      [330, 0.24], [392, 0.24], [440, 0.60],
+      // 过渡小节
+      [494, 0.24], [523, 0.24], [494, 0.24], [440, 0.36],
+      [392, 0.24], [440, 0.24], [392, 0.60],
+      // 高潮副句
+      [587, 0.30], [659, 0.30], [587, 0.30], [523, 0.42],
+      [494, 0.24], [523, 0.24], [587, 0.48],
+      [659, 0.30], [587, 0.30], [523, 0.30], [494, 0.42],
+      [440, 0.24], [494, 0.24], [440, 0.60],
+    ];
+
+    function stopBgm() {
+      if (bgmTimer) {
+        clearInterval(bgmTimer);
+        bgmTimer = null;
+      }
+      bgmStep = 0;
+    }
+
+    function startBgm() {
+      if (muted || !musicOn || volume <= 0) return;
+      ensureAudio();
+      stopBgm();
+      const playStep = () => {
+        if (muted) return;
+        const [f, d] = BGM_NOTES[bgmStep % BGM_NOTES.length];
+        playTone({ freq: f, duration: d * 0.92, type: "triangle", gain: 0.026 });
+        // 节拍上加轻低八度
+        if (bgmStep % 4 === 0) {
+          playTone({ freq: f / 2, duration: d * 1.2, type: "sine", gain: 0.016 });
+        }
+        bgmStep += 1;
+      };
+      playStep();
+      bgmTimer = setInterval(() => {
+        if (!isStartMenuOpen()) {
+          stopBgm();
+          return;
+        }
+        playStep();
+      }, 250);
+    }
+
+    function isStartMenuOpen() {
+      if (running || dead) return false;
+      if (!overlay || overlay.classList.contains("hidden")) return false;
+      const srb = document.getElementById("startRulesBtn");
+      return !!(srb && !srb.classList.contains("hidden"));
+    }
+
+    function syncBgm() {
+      if (isStartMenuOpen()) startBgm();
+      else stopBgm();
+    }
+
+    function playEat() {
+      // 轻快上行双音
+      playTone({ freq: 660, endFreq: 880, duration: 0.08, type: "triangle", gain: 0.07 });
+      playTone({ freq: 880, endFreq: 1100, duration: 0.1, type: "triangle", gain: 0.06, when: 0.06 });
+    }
+
+    function playDie() {
+      // 短促掉命
+      playTone({ freq: 330, endFreq: 165, duration: 0.18, type: "square", gain: 0.045 });
+      playTone({ freq: 165, endFreq: 110, duration: 0.16, type: "triangle", gain: 0.04, when: 0.12 });
+    }
+
+    function playGameOverMusic() {
+      // 失败曲：小调下行 + 拖长收尾，偏沮丧
+      const seq = [
+        [392, 0.32, "triangle"],
+        [349, 0.32, "triangle"],
+        [330, 0.40, "triangle"],
+        [294, 0.48, "triangle"],
+        [262, 0.36, "sine"],
+        [247, 0.36, "sine"],
+        [220, 0.70, "sine"],
+        [196, 0.90, "sine"],
+      ];
+      let t = 0.04;
+      seq.forEach(([f, d, type]) => {
+        playTone({ freq: f, duration: d * 0.95, type, gain: 0.05, when: t });
+        playTone({ freq: f / 2, duration: d * 0.9, type: "sine", gain: 0.028, when: t });
+        t += d;
+      });
+      playTone({ freq: 98, endFreq: 65, duration: 1.1, type: "triangle", gain: 0.04, when: t });
+    }
+
+    function playLoseLife() {
+      // 掉命：短促下行，比结束音轻
+      playTone({ freq: 330, endFreq: 165, duration: 0.18, type: "square", gain: 0.045 });
+      playTone({ freq: 165, endFreq: 110, duration: 0.16, type: "triangle", gain: 0.04, when: 0.12 });
+    }
+
+    function playRevive() {
+      // 复活：短促上行
+      playTone({ freq: 262, duration: 0.07, type: "triangle", gain: 0.06 });
+      playTone({ freq: 392, duration: 0.07, type: "triangle", gain: 0.06, when: 0.07 });
+      playTone({ freq: 523, duration: 0.12, type: "triangle", gain: 0.07, when: 0.14 });
+    }
+
+    function playLifePickup() {
+      // 加命：柔和双音上行
+      playTone({ freq: 523.25, endFreq: 659.25, duration: 0.12, type: "sine", gain: 0.065 });
+      playTone({ freq: 783.99, duration: 0.18, type: "sine", gain: 0.06, when: 0.1 });
+    }
+
+    function playMilestone() {
+      // 阶段恭喜：明亮的上行琶音 C-E-G-C（triangle，短促欢快）
+      playTone({ freq: 523.25, duration: 0.09, type: "triangle", gain: 0.07 });
+      playTone({ freq: 659.25, duration: 0.09, type: "triangle", gain: 0.07, when: 0.08 });
+      playTone({ freq: 783.99, duration: 0.09, type: "triangle", gain: 0.07, when: 0.16 });
+      playTone({ freq: 1046.5, duration: 0.18, type: "triangle", gain: 0.08, when: 0.24 });
+    }
+
+    function playNewRecord(delay = 0) {
+      // 破纪录：更高亢的三连音 + 双音收尾，与阶段恭喜明显区分
+      playTone({ freq: 880, duration: 0.06, type: "square", gain: 0.04, when: delay });
+      playTone({ freq: 1108.73, duration: 0.06, type: "square", gain: 0.04, when: delay + 0.05 });
+      playTone({ freq: 1318.51, duration: 0.1, type: "square", gain: 0.05, when: delay + 0.1 });
+      playTone({ freq: 1760, duration: 0.2, type: "triangle", gain: 0.07, when: delay + 0.18 });
+      playTone({ freq: 1318.51, duration: 0.22, type: "sine", gain: 0.05, when: delay + 0.22 });
+    }
+
+    let lastHoverSfx = 0;
+
+    function playHover() {
+      if (muted) return;
+      const now = performance.now();
+      if (now - lastHoverSfx < 80) return;
+      lastHoverSfx = now;
+      playTone({ freq: 880, duration: 0.04, type: "sine", gain: 0.03 });
+    }
+
+    function playPropPickup(type) {
+      if (type === "life") {
+        playLifePickup();
+        return;
+      }
+      if (type === "star") {
+        // 闪亮上行三连
+        playTone({ freq: 523, duration: 0.07, type: "square", gain: 0.04 });
+        playTone({ freq: 659, duration: 0.07, type: "square", gain: 0.04, when: 0.06 });
+        playTone({ freq: 784, duration: 0.12, type: "triangle", gain: 0.055, when: 0.12 });
+        return;
+      }
+      if (type === "wrap") {
+        playTone({ freq: 392, endFreq: 523, duration: 0.1, type: "sine", gain: 0.06 });
+        playTone({ freq: 523, endFreq: 659, duration: 0.12, type: "sine", gain: 0.05, when: 0.07 });
+      } else if (type === "magnet") {
+        // 吸附：上滑后微颤，像被吸住
+        playTone({ freq: 220, endFreq: 660, duration: 0.18, type: "sawtooth", gain: 0.045 });
+        playTone({ freq: 660, duration: 0.05, type: "square", gain: 0.03, when: 0.16 });
+        playTone({ freq: 620, duration: 0.05, type: "square", gain: 0.028, when: 0.22 });
+        playTone({ freq: 680, duration: 0.08, type: "square", gain: 0.03, when: 0.28 });
+      } else {
+        playTone({ freq: 440, endFreq: 220, duration: 0.28, type: "triangle", gain: 0.055 });
+      }
+    }
+
+    best = Number(localStorage.getItem(BEST_KEY) || 0);
+    bestEl.textContent = String(best);
+
+    // 目标速度跟蛇身长度挂钩：越长越快
+    function tickMs(len) {
+      const extra = Math.max(0, len - START_LEN);
+      return Math.max(minTickMs(), BASE_MS - extra * MS_PER_SEG);
+    }
+
+    // 吃苹果瞬间的放慢倍率：随长度线性收窄，下限 EAT_SLOW_MIN
+    function eatSlowFor(len) {
+      const extra = Math.max(0, len - START_LEN);
+      return Math.max(EAT_SLOW_MIN, EAT_SLOW_MAX - extra * EAT_SLOW_DECAY);
+    }
+
+    function randInt(n) {
+      return Math.floor(Math.random() * n);
+    }
+
+    function occupiedCells() {
+      const occupied = new Set();
+      if (gameMode === "versus" || gameMode === "ai") {
+        versusPlayers.forEach((p) =>
+          p.snake.forEach((s) => occupied.add(`${s.x},${s.y}`))
+        );
+      } else if (snake) {
+        snake.forEach((s) => occupied.add(`${s.x},${s.y}`));
+      }
+      if (prop) occupied.add(`${prop.x},${prop.y}`);
+      (foods || []).forEach((f) => occupied.add(`${f.x},${f.y}`));
+      (obstacles || []).forEach((o) => occupied.add(`${o.x},${o.y}`));
+      return occupied;
+    }
+
+    function hitsObstacle(x, y) {
+      return (
+        obstacles.some((o) => o.x === x && o.y === y) ||
+        movers.some((m) => m.x === x && m.y === y)
+      );
+    }
+
+    function spawnObstacles() {
+      obstacles = [];
+      movers = [];
+      if (difficulty !== "hard") return;
+      // 5–7 个静止怪物，每个占 2–4 格
+      const count = 5 + randInt(3);
+      for (let i = 0; i < count; i++) {
+        const size = 2 + randInt(3);
+        const shapes = [
+          [[0, 0], [1, 0], [0, 1], [1, 1]],
+          [[0, 0], [1, 0], [2, 0]],
+          [[0, 0], [0, 1], [0, 2]],
+          [[0, 0], [1, 0], [1, 1]],
+          [[0, 0], [1, 0], [2, 0], [1, 1]],
+        ];
+        const shape = shapes[randInt(shapes.length)].slice(0, size);
+        const ox = 2 + randInt(Math.max(1, COLS - 6));
+        const oy = 2 + randInt(Math.max(1, ROWS - 6));
+        if (Math.abs(oy - Math.floor(ROWS / 2)) < 3 && ox < COLS * 0.7) continue;
+        shape.forEach(([dx, dy]) => {
+          const x = ox + dx;
+          const y = oy + dy;
+          if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return;
+          obstacles.push({ x, y, kind: "monster" });
+        });
+      }
+      // 2–3 个会移动的怪物
+      const moverCount = 2 + randInt(2);
+      const dirs = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+      ];
+      for (let i = 0; i < moverCount; i++) {
+        let x, y, tries = 0;
+        do {
+          x = 2 + randInt(COLS - 4);
+          y = 2 + randInt(ROWS - 4);
+          tries++;
+        } while (
+          tries < 80 &&
+          (hitsObstacle(x, y) ||
+            Math.abs(y - Math.floor(ROWS / 2)) < 2)
+        );
+        if (hitsObstacle(x, y)) continue;
+        const d = dirs[randInt(dirs.length)];
+        obstacles.push({ x, y, kind: "mover" });
+        movers.push({
+          x,
+          y,
+          vx: d.x,
+          vy: d.y,
+          nextAt: performance.now() + MOVER_MS + randInt(400),
+        });
+      }
+    }
+
+    function moverBlocked(x, y) {
+      if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return true;
+      if (obstacles.some((o) => o.x === x && o.y === y && o.kind === "monster")) return true;
+      if (movers.some((m) => m.x === x && m.y === y)) return true;
+      if (gameMode === "versus" || gameMode === "ai") {
+        if (versusPlayers.some((p) => p.snake.some((s) => s.x === x && s.y === y)))
+          return true;
+      } else if (snake && snake.some((s) => s.x === x && s.y === y)) {
+        return true;
+      }
+      return false;
+    }
+
+    function stepMovers() {
+      if (difficulty !== "hard" || dead || !running) return;
+      const now = performance.now();
+      movers.forEach((m) => {
+        if (now < m.nextAt) return;
+        m.nextAt = now + MOVER_MS + randInt(200);
+        let nx = m.x + m.vx;
+        let ny = m.y + m.vy;
+        if (moverBlocked(nx, ny)) {
+          // 掉头；若仍堵则换垂直方向
+          m.vx = -m.vx;
+          m.vy = -m.vy;
+          nx = m.x + m.vx;
+          ny = m.y + m.vy;
+          if (moverBlocked(nx, ny)) {
+            const alt = m.vx !== 0 ? { x: 0, y: 1 } : { x: 1, y: 0 };
+            if (randInt(2)) {
+              alt.x = -alt.x;
+              alt.y = -alt.y;
+            }
+            m.vx = alt.x;
+            m.vy = alt.y;
+            nx = m.x + m.vx;
+            ny = m.y + m.vy;
+            if (moverBlocked(nx, ny)) return;
+          }
+        }
+        // 同步 obstacles 里的同格
+        const idx = obstacles.findIndex((o) => o.x === m.x && o.y === m.y && o.kind === "mover");
+        m.x = nx;
+        m.y = ny;
+        if (idx >= 0) {
+          obstacles[idx].x = nx;
+          obstacles[idx].y = ny;
+        } else {
+          obstacles.push({ x: nx, y: ny, kind: "mover" });
+        }
+      });
+    }
+
+    function drawObstacles() {
+      const now = performance.now();
+      obstacles.forEach((o) => {
+        const ox = o.x * CELL;
+        const oy = o.y * CELL;
+        const isMover = o.kind === "mover";
+        // 移动怪：偏红橙；静止怪：紫
+        ctx.fillStyle = isMover ? "#c44536" : "#6c3cb4";
+        ctx.beginPath();
+        ctx.moveTo(ox + 2, oy + CELL - 2);
+        ctx.lineTo(ox + 2, oy + 8);
+        ctx.quadraticCurveTo(ox + 2, oy + 2, ox + 8, oy + 2);
+        ctx.lineTo(ox + CELL - 8, oy + 2);
+        ctx.quadraticCurveTo(ox + CELL - 2, oy + 2, ox + CELL - 2, oy + 8);
+        ctx.lineTo(ox + CELL - 2, oy + CELL - 2);
+        for (let i = 0; i < 4; i++) {
+          const x1 = ox + 2 + ((i + 0.5) * (CELL - 4)) / 4;
+          const x2 = ox + 2 + ((i + 1) * (CELL - 4)) / 4;
+          ctx.lineTo(x1, oy + CELL - 6);
+          ctx.lineTo(x2, oy + CELL - 2);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // 眼睛朝移动方向（静止怪略左右扫）
+        let lookX = 0;
+        let lookY = 0;
+        if (isMover) {
+          const m = movers.find((mm) => mm.x === o.x && mm.y === o.y);
+          if (m) {
+            lookX = m.vx * 1.2;
+            lookY = m.vy * 1.2;
+          }
+        } else {
+          lookX = Math.sin(now / 500 + o.x) * 0.8;
+        }
+        ctx.fillStyle = "#ffe566";
+        ctx.beginPath();
+        ctx.arc(ox + 7 + lookX, oy + 9 + lookY, 2, 0, Math.PI * 2);
+        ctx.arc(ox + CELL - 7 + lookX, oy + 9 + lookY, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#1a1028";
+        ctx.beginPath();
+        ctx.arc(ox + 7.5 + lookX, oy + 9 + lookY, 1, 0, Math.PI * 2);
+        ctx.arc(ox + CELL - 6.5 + lookX, oy + 9 + lookY, 1, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function spawnOneFood() {
+      if (!foods) foods = [];
+      const occupied = occupiedCells();
+      obstacles.forEach((o) => occupied.add(`${o.x},${o.y}`));
+      let x = 0;
+      let y = 0;
+      let tries = 0;
+      do {
+        x = randInt(COLS);
+        y = randInt(ROWS);
+        tries++;
+        // 简单模式：尽量别刷在最外圈，降低贴边暴毙
+        if (difficulty === "easy" && tries < 40) {
+          if (edgeFoodWeight(x, y) < 2) continue;
+        }
+      } while (occupied.has(`${x},${y}`) && tries < 200);
+      foods.push({ x, y });
+    }
+
+    function desiredFoodCount() {
+      if (gameMode === "solo") return 1;
+      const r = Math.random();
+      if (r < 0.4) return 1;
+      if (r < 0.8) return 2;
+      return 3;
+    }
+
+    function ensureFoods() {
+      if (!foods) foods = [];
+      const want = desiredFoodCount();
+      while (foods.length < want) spawnOneFood();
+    }
+
+    function foodIndexAt(x, y) {
+      return (foods || []).findIndex((f) => f.x === x && f.y === y);
+    }
+
+    function nearestFood(x, y) {
+      if (!foods || !foods.length) return { x: 0, y: 0 };
+      let bestF = foods[0];
+      let bestD = Infinity;
+      for (const f of foods) {
+        const d = Math.abs(f.x - x) + Math.abs(f.y - y);
+        if (d < bestD) {
+          bestD = d;
+          bestF = f;
+        }
+      }
+      return bestF;
+    }
+
+    function nearestFoodIndex(x, y) {
+      if (!foods || !foods.length) return -1;
+      let bi = 0;
+      let bd = Infinity;
+      for (let i = 0; i < foods.length; i++) {
+        const d = Math.abs(foods[i].x - x) + Math.abs(foods[i].y - y);
+        if (d < bd) {
+          bd = d;
+          bi = i;
+        }
+      }
+      return bi;
+    }
+
+    function spawnFood() {
+      foods = [];
+      spawnOneFood();
+    }
+
+    function spawnFoodVersus() {
+      foods = [];
+      ensureFoods();
+    }
+
+    function afterEatFood() {
+      if (gameMode === "solo") {
+        if (!foods || !foods.length) spawnOneFood();
+        return;
+      }
+      ensureFoods();
+    }
+
+    function isWrapActive() {
+      return performance.now() < wrapUntil;
+    }
+
+    function isSlowActive() {
+      return performance.now() < slowUntil;
+    }
+
+    function isMagnetActive() {
+      return performance.now() < magnetUntil;
+    }
+
+    function isStarActive() {
+      return performance.now() < starUntil;
+    }
+
+    function isStarBlinking() {
+      const left = starUntil - performance.now();
+      return left > 0 && left <= PROP_STAR_BLINK_MS;
+    }
+
+    function isWrapBlinking() {
+      const left = wrapUntil - performance.now();
+      return left > 0 && left <= PROP_BLINK_MS;
+    }
+
+    function applyAppleEat(fromMagnet) {
+      // 磁铁把苹果送到蛇头时补长一节；普通走到苹果上则在 step 里已 unshift 不再 pop
+      if (fromMagnet) {
+        const fi = nearestFoodIndex(snake[0].x, snake[0].y);
+        if (fi >= 0) foods.splice(fi, 1);
+        snake.unshift({ x: snake[0].x, y: snake[0].y });
+      }
+      score += 10;
+      scoreEl.textContent = String(score);
+      speedEl.textContent = String(snake.length);
+      speedEase = eatSlowFor(snake.length);
+      playEat();
+
+      let justHitMilestone = false;
+      if (score >= nextMilestone) {
+        justHitMilestone = true;
+        playMilestone();
+        while (nextMilestone <= score) nextMilestone += MILESTONE_STEP;
+      }
+      if (!newRecordPlayed && score > runStartBest) {
+        newRecordPlayed = true;
+        playNewRecord(justHitMilestone ? 0.45 : 0);
+      }
+
+      afterEatFood();
+    }
+
+    function inMagnetRange(x, y, hx, hy) {
+      return (
+        Math.abs(x - hx) <= PROP_MAGNET_RANGE &&
+        Math.abs(y - hy) <= PROP_MAGNET_RANGE
+      );
+    }
+
+    function nearestFoodIndexInRange(hx, hy) {
+      if (!foods || !foods.length) return -1;
+      let bi = -1;
+      let bd = Infinity;
+      for (let i = 0; i < foods.length; i++) {
+        const f = foods[i];
+        if (!inMagnetRange(f.x, f.y, hx, hy)) continue;
+        const d = Math.abs(f.x - hx) + Math.abs(f.y - hy);
+        if (d < bd) {
+          bd = d;
+          bi = i;
+        }
+      }
+      return bi;
+    }
+
+    function pullFoodTowardSnake() {
+      if (!isMagnetActive() || dead || !running || !snake.length || !foods.length) return;
+      const now = performance.now();
+      if (now - lastMagnetPull < PROP_MAGNET_PULL_MS) return;
+      lastMagnetPull = now;
+
+      const head = snake[0];
+      const mid = snake[Math.floor(snake.length / 2)];
+      // 只吸蛇头周围固定范围内的苹果；范围外的苹果不动
+      const fi = nearestFoodIndexInRange(head.x, head.y);
+      if (fi < 0) return;
+      const food = foods[fi];
+
+      if (food.x === head.x && food.y === head.y) {
+        applyAppleEat(true);
+        return;
+      }
+      if (magnetAimMid && food.x === mid.x && food.y === mid.y) {
+        applyAppleEat(true);
+        return;
+      }
+
+      let target = magnetAimMid ? mid : head;
+      let allowThroughBody = magnetAimMid;
+
+      const stepToward = (tx, ty, throughBody) => {
+        const dx = Math.sign(tx - food.x);
+        const dy = Math.sign(ty - food.y);
+        if (dx === 0 && dy === 0) return false;
+
+        const candidates = [];
+        if (Math.abs(tx - food.x) >= Math.abs(ty - food.y)) {
+          if (dx !== 0) candidates.push({ x: food.x + dx, y: food.y });
+          if (dy !== 0) candidates.push({ x: food.x, y: food.y + dy });
+        } else {
+          if (dy !== 0) candidates.push({ x: food.x, y: food.y + dy });
+          if (dx !== 0) candidates.push({ x: food.x + dx, y: food.y });
+        }
+
+        for (const c of candidates) {
+          if (c.x < 0 || c.y < 0 || c.x >= COLS || c.y >= ROWS) continue;
+          if (c.x === tx && c.y === ty) {
+            foods[fi] = c;
+            return true;
+          }
+          if (!throughBody && snake.some((s) => s.x === c.x && s.y === c.y)) {
+            continue;
+          }
+          foods[fi] = c;
+          return true;
+        }
+        return false;
+      };
+
+      const moved = stepToward(target.x, target.y, allowThroughBody);
+      if (!moved && !magnetAimMid) {
+        magnetMissCount += 1;
+        if (magnetMissCount >= PROP_MAGNET_MISS_MAX) {
+          magnetAimMid = true;
+          target = mid;
+          stepToward(mid.x, mid.y, true);
+        }
+      }
+    }
+
+    function updateLivesUI() {
+      livesEl.textContent = `${lives}/${maxLives()}`;
+    }
+
+    function clearPowerUps() {
+      wrapUntil = 0;
+      slowUntil = 0;
+      magnetUntil = 0;
+      starUntil = 0;
+      lastMagnetPull = 0;
+      magnetMissCount = 0;
+      magnetAimMid = false;
+      prop = null;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    }
+
+    function placeSnakeAtDeath(dx, dy, len, facing) {
+      // 头落在倒下位置；身体沿反方向蛇形铺开，保留完整长度（不截断）
+      const hx = Math.max(0, Math.min(COLS - 1, dx));
+      const hy = Math.max(0, Math.min(ROWS - 1, dy));
+      const L = Math.max(START_LEN, len);
+
+      let vx = facing ? Number(facing.x) || 0 : 1;
+      let vy = facing ? Number(facing.y) || 0 : 0;
+      if (vx === 0 && vy === 0) {
+        vx = 1;
+        vy = 0;
+      } else if (Math.abs(vx) > Math.abs(vy)) {
+        vx = vx > 0 ? 1 : -1;
+        vy = 0;
+      } else {
+        vx = 0;
+        vy = vy > 0 ? 1 : -1;
+      }
+
+      const body = [{ x: hx, y: hy }];
+      const used = new Set([`${hx},${hy}`]);
+      // 优先沿行进反方向，撞边后换垂直方向继续铺，避免长度被砍掉
+      const dirs = [
+        { x: -vx, y: -vy },
+        { x: -vy, y: vx },
+        { x: vy, y: -vx },
+        { x: vx, y: vy },
+      ];
+
+      while (body.length < L) {
+        const last = body[body.length - 1];
+        let placed = false;
+        for (const d of dirs) {
+          const nx = last.x + d.x;
+          const ny = last.y + d.y;
+          if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
+          const key = `${nx},${ny}`;
+          if (used.has(key)) continue;
+          body.push({ x: nx, y: ny });
+          used.add(key);
+          placed = true;
+          break;
+        }
+        if (!placed) break;
+      }
+
+      snake = body;
+      dir = { x: vx, y: vy };
+      nextDir = { x: vx, y: vy };
+      speedEase = 1;
+    }
+
+    function isReviveShieldActive() {
+      return performance.now() < reviveShieldUntil;
+    }
+
+    function isDeathProtected() {
+      // 复活护盾 / 穿墙无敌 / 星星：撞墙穿出、可穿身
+      return isWrapActive() || isReviveShieldActive() || isStarActive();
+    }
+
+    function tryRevive(deathX, deathY, facing) {
+      // 原地立即复活：继承长度、清空道具，并给 3 秒闪烁无敌
+      const keepLen = snake.length;
+      lives -= 1;
+      updateLivesUI();
+      if (lives <= 0) {
+        gameOver();
+        return false;
+      }
+      playLoseLife();
+      clearPowerUps();
+      placeSnakeAtDeath(deathX, deathY, keepLen, facing);
+      reviveShieldUntil = performance.now() + REVIVE_SHIELD_MS;
+      spawnFood();
+      playRevive();
+      ensurePropAnim();
+      statusEl.textContent = t("reviveShield", 3, `${lives}/${maxLives()}`);
+      draw();
+      schedule();
+      return true;
+    }
+
+    function maybeSpawnProp() {
+      const now = performance.now();
+      if (prop || now < nextPropAt) return;
+
+      // 无敌/减速/星星互斥：任一生效时，不刷这三类
+      if (isWrapActive() || isSlowActive() || isStarActive()) return;
+
+      const occupied = occupiedCells();
+      const place = () => {
+        let x, y, tries = 0;
+        do {
+          x = randInt(COLS);
+          y = randInt(ROWS);
+          tries++;
+        } while (occupied.has(`${x},${y}`) && tries < 120);
+        return { x, y };
+      };
+
+      // 稀有加命：概率最低，满生命时不刷
+      if (lives < maxLives() && Math.random() < PROP_LIFE_CHANCE) {
+        prop = { ...place(), type: "life" };
+        return;
+      }
+
+      // 星星：低于普通道具、高于加命
+      if (Math.random() < PROP_STAR_CHANCE) {
+        prop = { ...place(), type: "star" };
+        return;
+      }
+
+      let type;
+      if (isMagnetActive()) {
+        type = Math.random() < 0.5 ? "wrap" : "slow";
+      } else {
+        const roll = Math.random();
+        type = roll < 0.34 ? "wrap" : roll < 0.67 ? "slow" : "magnet";
+      }
+      prop = { ...place(), type };
+    }
+
+    function collectProp() {
+      const now = performance.now();
+      const type = prop.type;
+      if (type === "life") {
+        lives = Math.min(maxLives(), lives + 1);
+        updateLivesUI();
+        nextPropAt = now + 2500;
+        prop = null;
+        playPropPickup("life");
+        return;
+      }
+      if (type === "wrap") {
+        wrapUntil = now + PROP_WRAP_MS;
+        nextPropAt = now + PROP_WRAP_MS + PROP_RESPAWN_GAP_MS;
+      } else if (type === "star") {
+        starUntil = now + PROP_STAR_MS;
+        nextPropAt = now + PROP_STAR_MS + PROP_RESPAWN_GAP_MS;
+      } else if (type === "magnet") {
+        magnetUntil = now + PROP_MAGNET_MS;
+        lastMagnetPull = now;
+        magnetMissCount = 0;
+        magnetAimMid = false;
+        nextPropAt = now + PROP_MAGNET_SPAWN_DELAY;
+      } else {
+        slowUntil = now + PROP_SLOW_MS;
+        nextPropAt = now + PROP_SLOW_MS + PROP_RESPAWN_GAP_MS;
+      }
+      prop = null;
+      playPropPickup(type);
+      ensurePropAnim();
+    }
+
+    function ensurePropAnim() {
+      if (rafId) return;
+      const tick = () => {
+        rafId = 0;
+        if (dead || !running) return;
+        if (isWrapActive() || isMagnetActive() || isReviveShieldActive() || isStarActive() || (difficulty === "hard" && movers.length)) {
+          pullFoodTowardSnake();
+          draw();
+          updateStatusLine();
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function updateStatusLine() {
+      if (dead) return;
+      const now = performance.now();
+      const parts = [];
+      if (now < wrapUntil) {
+        const s = Math.ceil((wrapUntil - now) / 1000);
+        parts.push(s <= 3 ? t("wrapAlmost", s) : t("wrap", s));
+      }
+      if (now < slowUntil) {
+        parts.push(t("slow", Math.ceil((slowUntil - now) / 1000)));
+      }
+      if (now < magnetUntil) {
+        parts.push(t("magnet", Math.ceil((magnetUntil - now) / 1000)));
+      }
+      if (now < starUntil) {
+        parts.push(t("star", Math.ceil((starUntil - now) / 1000)));
+      }
+      if (now < reviveShieldUntil) {
+        parts.push(t("reviveShieldStatus", Math.ceil((reviveShieldUntil - now) / 1000)));
+      }
+      const playing = t("playingPrefix");
+      statusEl.textContent = parts.length ? `${playing} · ${parts.join(" + ")}` : playing;
+    }
+
+    function reset() {
+      gameMode = "solo";
+      versusPlayers = [];
+      spawnObstacles();
+      snake = [
+        { x: 8, y: 12 },
+        { x: 7, y: 12 },
+        { x: 6, y: 12 },
+      ];
+      dir = { x: 1, y: 0 };
+      nextDir = { x: 1, y: 0 };
+      score = 0;
+      dead = false;
+      running = false;
+      speedEase = 1;
+      lives = maxLives();
+      updateLivesUI();
+      nextMilestone = MILESTONE_STEP;
+      runStartBest = best;
+      newRecordPlayed = false;
+      prop = null;
+      wrapUntil = 0;
+      slowUntil = 0;
+      magnetUntil = 0;
+      starUntil = 0;
+      lastMagnetPull = 0;
+      magnetMissCount = 0;
+      magnetAimMid = false;
+      reviveShieldUntil = 0;
+      nextPropAt = performance.now() + PROP_FIRST_SPAWN_MS;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      scoreEl.textContent = "0";
+      speedEl.textContent = String(START_LEN);
+      statusEl.textContent = t("statusReady");
+      spawnFood();
+      draw();
+    }
+
+    function setOverlay(title, text, btnLabel, show, opts = {}) {
+      overlayTitle.textContent = title || "";
+      overlayTitle.classList.toggle("hidden", !!opts.showRules || !title);
+      overlayText.innerHTML = text || "";
+      startBtn.textContent = btnLabel;
+      startBtn.classList.toggle("is-hidden", !!opts.hideStart);
+      startRulesBtn.classList.toggle("hidden", !opts.showRules);
+      versusBtn.classList.toggle("hidden", !opts.showRules);
+      const aiBtn = document.getElementById("aiBtn");
+      if (aiBtn) aiBtn.classList.toggle("hidden", !opts.showRules);
+      const moreSettingsBtn = document.getElementById("moreSettingsBtn");
+      if (moreSettingsBtn) moreSettingsBtn.classList.toggle("hidden", !opts.showRules);
+      const homeBtn = document.getElementById("homeBtn");
+      if (homeBtn) homeBtn.classList.toggle("hidden", !opts.showHome);
+      const restartBtn = document.getElementById("restartBtn");
+      if (restartBtn) {
+        restartBtn.classList.toggle("hidden", !opts.showHome);
+        restartBtn.textContent = t("restartLabel");
+      }
+      const gameTitle = document.getElementById("gameTitle");
+      if (gameTitle) gameTitle.classList.toggle("hidden", !opts.showRules);
+      // 开始菜单 / 暂停 / 结束：模糊棋盘
+      overlay.classList.toggle("overlay-dim", !!show);
+      if (opts.showRules) {
+        startBtn.textContent = t("startGame");
+        startRulesBtn.textContent = t("startRules");
+        versusBtn.textContent = t("versus");
+        if (aiBtn) aiBtn.textContent = t("ai");
+        if (moreSettingsBtn) moreSettingsBtn.textContent = t("moreSettings");
+      }
+      if (opts.showHome && homeBtn) homeBtn.textContent = t("home");
+      overlay.classList.toggle("hidden", !show);
+      if (typeof syncBgm === "function") syncBgm();
+    }
+
+    function startVersus() {
+      ensureAudio();
+      stopBgm();
+      gameMode = "versus";
+      dead = false;
+      running = true;
+      score = 0;
+      lives = maxLives();
+      speedEase = 1;
+      prop = null;
+      wrapUntil = slowUntil = magnetUntil = starUntil = 0;
+      reviveShieldUntil = 0;
+      nextPropAt = performance.now() + PROP_FIRST_SPAWN_MS;
+      spawnObstacles();
+      ensurePropAnim();
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      initVersusPlayers();
+      spawnFoodVersus();
+      refreshStatsUI();
+      statusEl.textContent = t("statusPlaying");
+      setOverlay("", "", "", false);
+      draw();
+      scheduleVersus();
+    }
+
+    function start() {
+      if (dead) reset();
+      ensureAudio();
+      running = true;
+      statusEl.textContent = t("statusPlaying");
+      stopBgm();
+      setOverlay("", "", "", false);
+      ensurePropAnim();
+      schedule();
+    }
+
+    function pause() {
+      if (!running || dead) return;
+      running = false;
+      clearTimeout(timer);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      statusEl.textContent = t("statusPaused");
+      setOverlay(t("pausedTitle"), t("pausedText"), t("resume"), true, { showHome: true });
+    }
+
+    function gameOver() {
+      dead = true;
+      running = false;
+      reviveShieldUntil = 0;
+      clearTimeout(timer);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      statusEl.textContent = t("statusOver");
+      playGameOverMusic();
+      if (score > best) {
+        best = score;
+        localStorage.setItem(BEST_KEY, String(best));
+        bestEl.textContent = String(best);
+      }
+      draw();
+      setOverlay(
+        t("overTitle"),
+        t("overText", score, best),
+        t("restart"),
+        true,
+        { showHome: true }
+      );
+    }
+
+    function schedule() {
+      stopBgm();
+      if (gameMode === "versus" || gameMode === "ai") {
+        scheduleVersus();
+        return;
+      }
+      clearTimeout(timer);
+      if (!running || dead) return;
+      const base = tickMs(snake.length);
+      let mult = speedEase;
+      if (isSlowActive()) mult *= PROP_SLOW_FACTOR;
+      if (isStarActive()) mult *= PROP_STAR_SPEED;
+      timer = setTimeout(step, base * mult);
+    }
+
+    function step() {
+      if (!running || dead) return;
+      dir = nextDir;
+      const head = {
+        x: snake[0].x + dir.x,
+        y: snake[0].y + dir.y,
+      };
+
+      // 穿墙/复活护盾：左进右出、上进下出
+      if (isDeathProtected()) {
+        if (head.x < 0) head.x = COLS - 1;
+        else if (head.x >= COLS) head.x = 0;
+        if (head.y < 0) head.y = ROWS - 1;
+        else if (head.y >= ROWS) head.y = 0;
+      }
+
+      const hitWall =
+        head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS;
+      const hitSelf = snake.some((s) => s.x === head.x && s.y === head.y);
+      const hitObs = hitsObstacle(head.x, head.y);
+
+      // 无敌/复活护盾：穿墙且可穿身；障碍物在无敌时也穿过
+      if (hitWall || ((hitSelf || hitObs) && !isDeathProtected())) {
+        const deathX = hitWall
+          ? Math.max(0, Math.min(COLS - 1, head.x))
+          : head.x;
+        const deathY = hitWall
+          ? Math.max(0, Math.min(ROWS - 1, head.y))
+          : head.y;
+        tryRevive(deathX, deathY, dir);
+        return;
+      }
+
+      snake.unshift(head);
+
+      // 吃道具
+      if (prop && head.x === prop.x && head.y === prop.y) {
+        collectProp();
+      }
+
+      const fi = foodIndexAt(head.x, head.y);
+      if (fi >= 0) {
+        foods.splice(fi, 1);
+        // 不 pop = 变长
+        applyAppleEat(false);
+      } else {
+        snake.pop();
+        // 渐进恢复，避免跳变
+        speedEase += (1 - speedEase) * EASE;
+      }
+
+      maybeSpawnProp();
+      stepMovers();
+      updateStatusLine();
+      refreshStatsUI();
+      draw();
+      schedule();
+    }
+
+    function cellOrigin(x, y) {
+      return { x: x * CELL, y: y * CELL };
+    }
+
+    function drawCell(x, y, color, inset = 2) {
+      // 严格落在格子内部，保证居中
+      const o = cellOrigin(x, y);
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        o.x + inset,
+        o.y + inset,
+        CELL - inset * 2,
+        CELL - inset * 2
+      );
+    }
+
+    function drawGrid() {
+      const gridColor = getComputedStyle(document.documentElement).getPropertyValue("--grid").trim() || "#243044";
+      ctx.save();
+      ctx.strokeStyle = gridColor;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      // +0.5 让 1px 线落在像素中心，缩放时更整齐
+      for (let i = 0; i <= COLS; i++) {
+        const x = i * CELL + 0.5;
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+      }
+      for (let j = 0; j <= ROWS; j++) {
+        const y = j * CELL + 0.5;
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawFood() {
+      (foods || []).forEach((food) => drawOneFood(food));
+    }
+
+    function drawOneFood(food) {
+      // 真苹果造型：双圆果身 + 果柄 + 叶子 + 高光
+      const o = cellOrigin(food.x, food.y);
+      const cx = o.x + CELL / 2;
+      const cy = o.y + CELL / 2 + CELL * 0.04;
+      const s = CELL * 0.34;
+
+      // 果身（左右两瓣叠出苹果轮廓）
+      ctx.fillStyle = "#e63946";
+      ctx.beginPath();
+      ctx.arc(cx - s * 0.32, cy, s * 0.58, 0, Math.PI * 2);
+      ctx.arc(cx + s * 0.32, cy, s * 0.58, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 底部略收，更像苹果
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + s * 0.18, s * 0.62, s * 0.52, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 果柄
+      ctx.strokeStyle = "#6b4226";
+      ctx.lineWidth = Math.max(1.2, CELL * 0.07);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.55);
+      ctx.quadraticCurveTo(cx + s * 0.05, cy - s * 0.95, cx + s * 0.12, cy - s * 1.05);
+      ctx.stroke();
+
+      // 叶子
+      ctx.fillStyle = "#2d6a4f";
+      ctx.beginPath();
+      ctx.ellipse(
+        cx + s * 0.38,
+        cy - s * 0.78,
+        s * 0.32,
+        s * 0.14,
+        -0.55,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      // 高光
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(
+        cx - s * 0.28,
+        cy - s * 0.22,
+        s * 0.16,
+        s * 0.1,
+        -0.6,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
+
+    function drawProp() {
+      if (!prop) return;
+      const o = cellOrigin(prop.x, prop.y);
+      const cx = o.x + CELL / 2;
+      const cy = o.y + CELL / 2;
+      const r = CELL * 0.32;
+      const pulse = 1 + Math.sin(performance.now() / 180) * 0.07;
+
+      if (prop.type === "wrap") {
+        ctx.fillStyle = "#4cc9f0";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#caf0f8";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.52, 0.2 * Math.PI, 1.5 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.52, 1.2 * Math.PI, 0.5 * Math.PI);
+        ctx.stroke();
+      } else if (prop.type === "magnet") {
+        // 明确的 U 形磁铁：横梁 + 两腿 + 红/蓝极
+        const halfW = CELL * 0.34 * pulse;
+        const th = CELL * 0.14;
+        const topY = cy - CELL * 0.28;
+        const legH = CELL * 0.48;
+        const left = cx - halfW;
+        const right = cx + halfW - th;
+
+        // 灰色 U 身
+        ctx.fillStyle = "#9aa5b5";
+        ctx.fillRect(left, topY, halfW * 2, th); // 顶横梁
+        ctx.fillRect(left, topY, th, legH); // 左腿
+        ctx.fillRect(right, topY, th, legH); // 右腿
+
+        // 红 / 蓝极（腿底）
+        const poleH = th * 0.95;
+        ctx.fillStyle = "#e63946";
+        ctx.fillRect(left, topY + legH - poleH, th, poleH);
+        ctx.fillStyle = "#3a86ff";
+        ctx.fillRect(right, topY + legH - poleH, th, poleH);
+
+        // 轻描边，增强轮廓
+        ctx.strokeStyle = "#5c6b80";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(left, topY, halfW * 2, th);
+        ctx.strokeRect(left, topY, th, legH);
+        ctx.strokeRect(right, topY, th, legH);
+      } else if (prop.type === "star") {
+        // 星星：五角星 + 微光
+        const s = CELL * 0.36 * pulse;
+        const spikes = 5;
+        const outer = s;
+        const inner = s * 0.42;
+        ctx.beginPath();
+        for (let i = 0; i < spikes * 2; i++) {
+          const ang = -Math.PI / 2 + (i * Math.PI) / spikes;
+          const rad = i % 2 === 0 ? outer : inner;
+          const x = cx + Math.cos(ang) * rad;
+          const y = cy + Math.sin(ang) * rad;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "#ffd60a";
+        ctx.fill();
+        ctx.strokeStyle = "#f4a261";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      } else if (prop.type === "life") {
+        // 经典爱心：双圆 + 尖底
+        const s = CELL * 0.38 * pulse;
+        ctx.fillStyle = "#ff4d6d";
+        ctx.beginPath();
+        ctx.arc(cx - s * 0.38, cy - s * 0.12, s * 0.42, 0, Math.PI * 2);
+        ctx.arc(cx + s * 0.38, cy - s * 0.12, s * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx - s * 0.78, cy - s * 0.05);
+        ctx.lineTo(cx, cy + s * 0.72);
+        ctx.lineTo(cx + s * 0.78, cy - s * 0.05);
+        ctx.closePath();
+        ctx.fill();
+        // 高光
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.beginPath();
+        ctx.arc(cx - s * 0.35, cy - s * 0.28, s * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = "#c77dff";
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#f3e8ff";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.45);
+        ctx.lineTo(cx, cy);
+        ctx.lineTo(cx + r * 0.35, cy + r * 0.2);
+        ctx.stroke();
+      }
+    }
+
+    function draw() {
+      if (gameMode === "versus" || gameMode === "ai") {
+        drawVersus();
+        return;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+      drawObstacles();
+      drawFood();
+      drawProp();
+
+      const blinking = isWrapBlinking() || isReviveShieldActive() || isStarBlinking();
+      const now = performance.now();
+      if (blinking) {
+        // 无敌/复活/星星将尽：身体明暗闪烁
+        const phase = Math.floor(now / PROP_BLINK_PERIOD_MS) % 2;
+        ctx.globalAlpha = phase === 0 ? 0.32 : 1;
+      } else if (isWrapActive()) {
+        ctx.globalAlpha = 1;
+      }
+
+      // snake：每节都在各自格子的正中
+      // 复活护盾只闪烁、保持原绿色；穿墙=蓝，星星=金
+      snake.forEach((seg, i) => {
+        const t = i / Math.max(1, snake.length - 1);
+        let r = Math.round(61 - t * 20);
+        let g = Math.round(220 - t * 80);
+        let b = Math.round(151 - t * 40);
+        if (isWrapActive()) {
+          r = Math.round(76 - t * 20);
+          g = Math.round(200 - t * 60);
+          b = Math.round(240 - t * 20);
+        } else if (isStarActive()) {
+          r = Math.round(255 - t * 40);
+          g = Math.round(214 - t * 50);
+          b = Math.round(70 + t * 20);
+        }
+        drawCell(seg.x, seg.y, `rgb(${r},${g},${b})`, 2);
+      });
+
+      // head highlight：同样居中
+      const h = snake[0];
+      const o = cellOrigin(h.x, h.y);
+      const pad = 5;
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
+      ctx.fillRect(o.x + pad, o.y + pad, CELL - pad * 2, CELL - pad * 2);
+
+      ctx.globalAlpha = 1;
+    }
+
+    function turn(nx, ny) {
+      if (dead) return;
+      // forbid reverse
+      if (nx === -dir.x && ny === -dir.y) return;
+      nextDir = { x: nx, y: ny };
+      if (!running) start();
+    }
+
+    const keyMap = {
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      w: [0, -1],
+      W: [0, -1],
+      s: [0, 1],
+      S: [0, 1],
+      a: [-1, 0],
+      A: [-1, 0],
+      d: [1, 0],
+      D: [1, 0],
+    };
+
+    const arrowOnly = {
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+    };
+    const wasdOnly = {
+      w: [0, -1], W: [0, -1],
+      s: [0, 1], S: [0, 1],
+      a: [-1, 0], A: [-1, 0],
+      d: [1, 0], D: [1, 0],
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (dead) {
+          if (gameMode === "versus") startVersus();
+          else if (gameMode === "ai") startAIMode();
+          else {
+            reset();
+            start();
+          }
+        } else if (running) {
+          pause();
+        } else {
+          start();
+        }
+        return;
+      }
+      if (gameMode === "versus" || gameMode === "ai") {
+        const useWasd = gameMode === "versus" || aiControls === "wasd";
+        const useArrows = gameMode === "versus" || aiControls === "arrows";
+        if (useWasd) {
+          const wv = wasdOnly[e.key];
+          if (wv) {
+            e.preventDefault();
+            versusTurn(0, wv[0], wv[1]);
+            if (!running && !dead) start();
+            return;
+          }
+        }
+        if (useArrows) {
+          const av = arrowOnly[e.key];
+          if (av) {
+            e.preventDefault();
+            if (gameMode === "versus") versusTurn(1, av[0], av[1]);
+            else versusTurn(0, av[0], av[1]);
+            if (!running && !dead) start();
+          }
+        }
+        return;
+      }
+      const vec = keyMap[e.key];
+      if (!vec) return;
+      e.preventDefault();
+      turn(vec[0], vec[1]);
+    });
+
+    function goHome() {
+      clearTimeout(timer);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      gameMode = "solo";
+      versusPlayers = [];
+      dead = false;
+      running = false;
+      reset();
+      refreshStatsUI();
+      setOverlay(t("title"), "", t("startGame"), true, { showRules: true });
+    }
+
+    let confirmAction = null; // 'home' | 'restart'
+
+    function openConfirmHome() {
+      confirmAction = "home";
+      document.getElementById("confirmTitle").textContent = t("confirmHomeTitle");
+      document.getElementById("confirmText").textContent = t("confirmHomeText");
+      document.getElementById("confirmCancelBtn").textContent = t("confirmCancel");
+      document.getElementById("confirmOkBtn").textContent = t("confirmOk");
+      document.getElementById("confirmModal").classList.remove("hidden");
+    }
+    function openConfirmRestart() {
+      confirmAction = "restart";
+      document.getElementById("confirmTitle").textContent = t("confirmRestartTitle");
+      document.getElementById("confirmText").textContent = t("confirmRestartText");
+      document.getElementById("confirmCancelBtn").textContent = t("confirmCancel");
+      document.getElementById("confirmOkBtn").textContent = t("confirmOk");
+      document.getElementById("confirmModal").classList.remove("hidden");
+    }
+    function closeConfirmHome() {
+      confirmAction = null;
+      document.getElementById("confirmModal").classList.add("hidden");
+    }
+    function doRestartCurrent() {
+      if (gameMode === "versus") startVersus();
+      else if (gameMode === "ai") startAIMode();
+      else {
+        reset();
+        start();
+      }
+    }
+    document.getElementById("confirmCancelBtn").addEventListener("click", closeConfirmHome);
+    document.getElementById("confirmOkBtn").addEventListener("click", () => {
+      const act = confirmAction;
+      closeConfirmHome();
+      if (act === "restart") doRestartCurrent();
+      else goHome();
+    });
+    document.getElementById("confirmModal").addEventListener("click", (e) => {
+      if (e.target.id === "confirmModal") closeConfirmHome();
+    });
+
+    document.getElementById("homeBtn").addEventListener("click", () => {
+      if (!dead && !running) openConfirmHome();
+      else goHome();
+    });
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      openConfirmRestart();
+    });
+
+    // 取消 R 键重开
+    // startBtn / pause / resume 逻辑保持
+
+    startBtn.addEventListener("click", () => {
+      if (dead) {
+        if (gameMode === "versus") startVersus();
+        else if (gameMode === "ai") startAIMode();
+        else {
+          reset();
+          start();
+        }
+      } else if (running) {
+        pause();
+      } else {
+        start();
+      }
+    });
+
+    versusBtn.addEventListener("click", () => {
+      pendingMatchKind = "versus";
+      openMatchModal();
+    });
+
+    aiBtn.addEventListener("click", () => {
+      pendingMatchKind = "ai";
+      openMatchModal();
+    });
+
+    function openMatchModal() {
+      const modal = document.getElementById("matchModal");
+      document.getElementById("matchModalTitle").textContent = t("matchTitle");
+      const _msb = document.getElementById("matchScoreBtn");
+      const _msub = document.getElementById("matchSurvivalBtn");
+      if (_msb) _msb.querySelector(".more-label").textContent = t("matchScore");
+      if (_msub) _msub.querySelector(".more-label").textContent = t("matchSurvival");
+      document.getElementById("matchCancelBtn").textContent = t("matchCancel");
+      document.getElementById("matchModeHint").textContent =
+        pendingMatchKind === "ai" ? t("aiHint") : t("versusHint");
+      document.getElementById("matchModalTitle").textContent = t("matchTitle");
+      const ctrlRow = document.getElementById("aiControlsRow");
+      if (ctrlRow) {
+        ctrlRow.classList.toggle("hidden", pendingMatchKind !== "ai");
+        const titleEl = document.getElementById("ctrlTitle");
+        if (titleEl) titleEl.textContent = t("ctrlTitle");
+        document.getElementById("ctrlWasdBtn").querySelector(".more-label").textContent = "WASD";
+        const arrowLabel = document.getElementById("ctrlArrowBtn").querySelector(".more-label");
+        arrowLabel.textContent = t("ctrlArrows");
+        document.getElementById("ctrlWasdBtn").setAttribute(
+          "aria-pressed",
+          aiControls === "wasd" ? "true" : "false"
+        );
+        document.getElementById("ctrlArrowBtn").setAttribute(
+          "aria-pressed",
+          aiControls === "arrows" ? "true" : "false"
+        );
+      }
+      modal.classList.remove("hidden");
+    }
+    function closeMatchModal() {
+      document.getElementById("matchModal").classList.add("hidden");
+    }
+    document.getElementById("matchScoreBtn").addEventListener("click", () => {
+      matchType = "score";
+      closeMatchModal();
+      if (pendingMatchKind === "ai") startAIMode();
+      else startVersus();
+    });
+    document.getElementById("matchSurvivalBtn").addEventListener("click", () => {
+      matchType = "survival";
+      closeMatchModal();
+      if (pendingMatchKind === "ai") startAIMode();
+      else startVersus();
+    });
+    document.getElementById("matchCancelBtn").addEventListener("click", closeMatchModal);
+    document.getElementById("matchModal").addEventListener("click", (e) => {
+      if (e.target.id === "matchModal") closeMatchModal();
+    });
+
+    function setAiControls(mode) {
+      aiControls = mode === "arrows" ? "arrows" : "wasd";
+      localStorage.setItem(AI_CTRL_KEY, aiControls);
+      const w = document.getElementById("ctrlWasdBtn");
+      const a = document.getElementById("ctrlArrowBtn");
+      if (w) w.setAttribute("aria-pressed", aiControls === "wasd" ? "true" : "false");
+      if (a) a.setAttribute("aria-pressed", aiControls === "arrows" ? "true" : "false");
+    }
+    document.getElementById("ctrlWasdBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      setAiControls("wasd");
+    });
+    document.getElementById("ctrlArrowBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      setAiControls("arrows");
+    });
+
+    // touch swipe support
+    let touchStart = null;
+    canvas.addEventListener(
+      "touchstart",
+      (e) => {
+        const t = e.changedTouches[0];
+        touchStart = { x: t.clientX, y: t.clientY };
+      },
+      { passive: true }
+    );
+    canvas.addEventListener(
+      "touchend",
+      (e) => {
+        if (!touchStart) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStart.x;
+        const dy = t.clientY - touchStart.y;
+        if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+        if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 1 : -1, 0);
+        else turn(0, dy > 0 ? 1 : -1);
+        touchStart = null;
+      },
+      { passive: true }
+    );
+
+    reset();
+    initTheme();
+
+    // 游戏规则对话框（仅开始界面「查看规则」打开）
+    const rulesModal = document.getElementById("rulesModal");
+    const rulesCloseBtn = document.getElementById("rulesCloseBtn");
+    function openRules() {
+      rulesModal.classList.remove("hidden");
+    }
+    function closeRules() {
+      rulesModal.classList.add("hidden");
+    }
+    startRulesBtn.addEventListener("click", openRules);
+    rulesCloseBtn.addEventListener("click", closeRules);
+    rulesModal.addEventListener("click", (e) => {
+      if (e.target === rulesModal) closeRules();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const rulesModal = document.getElementById("rulesModal");
+        const langModal = document.getElementById("langModal");
+        if (rulesModal && !rulesModal.classList.contains("hidden")) {
+          closeRules();
+          return;
+        }
+        if (langModal && !langModal.classList.contains("hidden")) {
+          closeLangModal();
+          return;
+        }
+        if (!document.getElementById("dropdownPop").classList.contains("hidden")) {
+          closeDropdown();
+          return;
+        }
+        const matchModal = document.getElementById("matchModal");
+        if (matchModal && !matchModal.classList.contains("hidden")) {
+          closeMatchModal();
+          return;
+        }
+        const moreModal = document.getElementById("moreModal");
+        if (moreModal && !moreModal.classList.contains("hidden")) {
+          closeMoreModal();
+          return;
+        }
+        const confirmModal = document.getElementById("confirmModal");
+        if (confirmModal && !confirmModal.classList.contains("hidden")) {
+          closeConfirmHome();
+          return;
+        }
+        // 对局中/暂停中：Space 与 Esc 同为开始/暂停，不走回首页
+        if (e.key === "Escape") {
+          if (running && !dead) {
+            pause();
+          } else if (!running && !dead && !overlay.classList.contains("hidden")) {
+            const onStart = !startRulesBtn.classList.contains("hidden");
+            if (!onStart) start();
+          }
+          return;
+        }
+      }
+    });
+
+    // 语言切换（弹窗）
+    document.querySelectorAll("[data-lang-set]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyLang(btn.dataset.langSet);
+        // 语言列表内直接切换，保留更多设置弹窗
+        document.getElementById("langSublist").classList.add("hidden");
+        document.getElementById("moreLangBtn").setAttribute("aria-expanded", "false");
+        // 无论在哪种遮罩状态，都强制刷新开始/暂停/结束按钮文案
+        if (dead) {
+          if (gameMode === "versus" || gameMode === "ai") {
+            const p1 = versusPlayers[0];
+            const p2 = versusPlayers[1];
+            setOverlay(overlayTitle.textContent || t("overTitle"), t("scoreResult", p1.score, p2.score), t("restartSame"), true, { showHome: true });
+          } else {
+            setOverlay(t("overTitle"), t("overText", score, best), t("restart"), true, { showHome: true });
+          }
+        } else if (running) {
+          refreshStatsUI();
+        } else if (startRulesBtn && !startRulesBtn.classList.contains("hidden")) {
+          // 开始菜单
+          setOverlay(t("title"), "", t("startGame"), true, { showRules: true });
+        } else {
+          // 暂停等
+          setOverlay(t("pausedTitle"), t("pausedText"), t("resume"), true, { showHome: true });
+        }
+      });
+    });
+
+    function openLangModal() {
+      document.getElementById("langModal").classList.remove("hidden");
+    }
+    function closeLangModal() {
+      document.getElementById("langModal").classList.add("hidden");
+    }
+    function sortMoreSettingsByLabelLength() {
+      const body = document.querySelector("#moreModal .more-settings-body");
+      if (!body) return;
+      const pop = document.getElementById("dropdownPop");
+      const rows = Array.from(body.children).filter((el) => el.id !== "dropdownPop");
+      rows.sort((a, b) => {
+        const la = (a.querySelector(".more-label")?.textContent || "").trim().length;
+        const lb = (b.querySelector(".more-label")?.textContent || "").trim().length;
+        return la - lb;
+      });
+      rows.forEach((el) => body.insertBefore(el, pop));
+    }
+
+    function closeDropdown() {
+      const pop = document.getElementById("dropdownPop");
+      if (!pop) return;
+      pop.classList.add("hidden");
+      pop.innerHTML = "";
+      delete pop.dataset.anchor;
+    }
+
+    function openDropdown(anchorBtn, options) {
+      const pop = document.getElementById("dropdownPop");
+      pop.innerHTML = "";
+      options.forEach((opt) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = opt.label;
+        b.setAttribute("aria-pressed", opt.pressed ? "true" : "false");
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          try {
+            opt.onClick();
+          } finally {
+            closeDropdown();
+          }
+        });
+        pop.appendChild(b);
+      });
+      // 用 offsetTop 定位，避免 getBoundingClientRect 在隐藏/切换时算错
+      const body = pop.parentElement;
+      pop.classList.remove("hidden");
+      pop.style.left = "auto";
+      pop.style.right = "0px";
+      pop.style.top = `${anchorBtn.offsetTop + anchorBtn.offsetHeight + 4}px`;
+    }
+
+    function isDropdownOpen() {
+      const pop = document.getElementById("dropdownPop");
+      return pop && !pop.classList.contains("hidden");
+    }
+
+    // 外部按下即关闭（比 click 更可靠，避免被弹窗层吞掉）
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (!isDropdownOpen()) return;
+        if (e.target.closest("#dropdownPop")) return;
+        if (e.target.closest("#moreLangBtn") || e.target.closest("#moreThemeBtn") || e.target.closest("#moreLivesBtn") || e.target.closest("#moreDiffBtn")) return;
+        closeDropdown();
+      },
+      true
+    );
+
+    document.getElementById("moreLangBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = document.getElementById("dropdownPop");
+      if (isDropdownOpen() && pop.dataset.anchor === "lang") {
+        closeDropdown();
+        return;
+      }
+      pop.dataset.anchor = "lang";
+      openDropdown(e.currentTarget, [
+        { label: "简体中文", pressed: langMode === "zh", onClick: () => applyLang("zh") },
+        { label: "繁體中文", pressed: langMode === "zt", onClick: () => applyLang("zt") },
+        { label: "English", pressed: langMode === "en", onClick: () => applyLang("en") },
+        { label: t("langSystem"), pressed: langMode === "system", onClick: () => applyLang("system") },
+      ]);
+    });
+
+    document.getElementById("moreMuteBtn").addEventListener("click", () => {
+      closeDropdown();
+      setMuted(!muted);
+    });
+
+    function updateMusicLabel() {
+      const v = document.getElementById("moreMusicValue");
+      if (v) v.textContent = musicOn ? t("soundOn") : t("soundOff");
+    }
+    document.getElementById("moreMusicBtn").addEventListener("click", () => {
+      closeDropdown();
+      musicOn = !musicOn;
+      localStorage.setItem(MUSIC_KEY, musicOn ? "1" : "0");
+      updateMusicLabel();
+      syncBgm();
+    });
+
+    const volumeSlider = document.getElementById("volumeSlider");
+    const volumeValue = document.getElementById("volumeValue");
+    const volumeRow = document.getElementById("volumeRow");
+    if (volumeSlider) {
+      volumeSlider.value = String(volume);
+      volumeSlider.addEventListener("input", () => {
+        volume = Number(volumeSlider.value);
+        localStorage.setItem(VOL_KEY, String(volume));
+        if (!muted && volume > 0 && isStartMenuOpen() && !bgmTimer) startBgm();
+      });
+    }
+
+    // 静音时禁用音量条显示
+    const _origSetMuted = setMuted;
+    setMuted = function (next) {
+      _origSetMuted(next);
+      if (volumeRow) volumeRow.classList.toggle("is-off", muted);
+    };
+
+    document.getElementById("moreDiffBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = document.getElementById("dropdownPop");
+      if (isDropdownOpen() && pop.dataset.anchor === "diff") {
+        closeDropdown();
+        return;
+      }
+      pop.dataset.anchor = "diff";
+      const opts = [
+        { key: "easy", label: t("diffEasy") },
+        { key: "normal", label: t("diffNormal") },
+        { key: "hard", label: t("diffHard") },
+      ];
+      openDropdown(
+        e.currentTarget,
+        opts.map((o) => ({
+          label: o.label,
+          pressed: difficulty === o.key,
+          onClick: () => {
+            difficulty = o.key;
+            localStorage.setItem(DIFF_KEY, difficulty);
+            setText(
+              "moreDiffValue",
+              difficulty === "easy"
+                ? t("diffEasy")
+                : difficulty === "hard"
+                  ? t("diffHard")
+                  : t("diffNormal")
+            );
+          },
+        }))
+      );
+    });
+
+    document.getElementById("moreLivesBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = document.getElementById("dropdownPop");
+      if (isDropdownOpen() && pop.dataset.anchor === "lives") {
+        closeDropdown();
+        return;
+      }
+      pop.dataset.anchor = "lives";
+      openDropdown(
+        e.currentTarget,
+        [1, 2, 3, 4, 5].map((n) => ({
+          label: String(n),
+          pressed: startLives === n,
+          onClick: () => {
+            startLives = n;
+            localStorage.setItem(START_LIVES_KEY, String(n));
+            setText("moreLivesValue", String(n));
+            // 新开一局才会用新初始生命；立刻刷新当前显示上限
+            if (!running && !dead) {
+              lives = startLives;
+              updateLivesUI();
+            }
+            refreshStatsUI();
+          },
+        }))
+      );
+    });
+
+    document.getElementById("moreThemeBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = document.getElementById("dropdownPop");
+      if (isDropdownOpen() && pop.dataset.anchor === "theme") {
+        closeDropdown();
+        return;
+      }
+      pop.dataset.anchor = "theme";
+      const mode = localStorage.getItem(THEME_KEY) || "system";
+      openDropdown(e.currentTarget, [
+        { label: t("themeLight"), pressed: mode === "light", onClick: () => applyThemeMode("light") },
+        { label: t("themeDark"), pressed: mode === "dark", onClick: () => applyThemeMode("dark") },
+        { label: t("themeSystem"), pressed: mode === "system", onClick: () => applyThemeMode("system") },
+      ]);
+    });
+
+    document.getElementById("langCloseBtn").addEventListener("click", closeLangModal);
+    document.getElementById("langModal").addEventListener("click", (e) => {
+      if (e.target.id === "langModal") closeLangModal();
+    });
+
+    function openMoreModal() {
+      closeDropdown();
+      document.getElementById("moreModal").classList.remove("hidden");
+    }
+    function closeMoreModal() {
+      closeDropdown();
+      document.getElementById("moreModal").classList.add("hidden");
+    }
+    document.getElementById("moreSettingsBtn").addEventListener("click", openMoreModal);
+    document.getElementById("moreCloseBtn").addEventListener("click", closeMoreModal);
+    document.getElementById("moreModal").addEventListener("click", (e) => {
+      if (e.target.id === "moreModal") closeMoreModal();
+    });
+
+    applyLang(langMode);
+    setMuted(muted);
+    refreshStatsUI();
+    setOverlay(t("title"), "", t("startGame"), true, { showRules: true });
+
+    // 首次用户手势后尝试播放开始菜单 BGM（浏览器自动播放限制）
+    const unlockBgm = () => {
+      ensureAudio();
+      syncBgm();
+      document.removeEventListener("pointerdown", unlockBgm);
+    };
+    document.addEventListener("pointerdown", unlockBgm);
+
+    // 开始菜单悬停提示音
+    [
+      "startBtn",
+      "versusBtn",
+      "aiBtn",
+      "startRulesBtn",
+      "moreSettingsBtn",
+      "homeBtn",
+    ].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("mouseenter", playHover);
+    });
+  </script>
+</body>
+</html>
